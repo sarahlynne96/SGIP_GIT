@@ -90,6 +90,7 @@
       margin: 0;
     }
 
+    /* LAYOUT: calculator first, maps last (bottom). On desktop, calc sticks right, maps span full width below */
     .container {
       display: grid;
       grid-template-columns: 1fr;
@@ -98,12 +99,25 @@
       padding: var(--space-4);
       margin: 0 auto;
     }
-    @media (min-width: 900px) {
+    @media (min-width: 1024px) {
       .container {
-        grid-template-columns: 58% 40%;
-        align-items: start;
-        column-gap: 2%;
+        grid-template-columns: 1fr 420px;
+        grid-template-areas:
+          "main calc"
+          "maps maps";
+        column-gap: var(--space-5);
       }
+      .main-content   { grid-area: main; }
+      .calculator-wrap{ grid-area: calc; }
+      .maps           { grid-area: maps; }
+    }
+    @media (max-width: 1023px) {
+      .main-content, .calculator-wrap, .maps {
+        grid-area: auto;
+      }
+      .calculator-wrap { order: 1; }
+      .main-content    { order: 2; }
+      .maps            { order: 3; }
     }
 
     .map-card {
@@ -139,6 +153,8 @@
       padding: var(--space-4);
       position: sticky;
       top: var(--space-4);
+      max-height: calc(100vh - 2 * var(--space-4));
+      overflow-y: auto;
     }
 
     .banner-warn {
@@ -245,6 +261,7 @@
       border-radius: var(--radius);
       font-size: var(--fs-sm);
       background: #fff9ec;
+      white-space: pre-line;
     }
     .badge {
       display: inline-block;
@@ -275,6 +292,276 @@
   </header>
 
   <main id="main" class="container" role="main">
+    <!-- MAIN CONTENT (blank slot if you want to add explainer text later) -->
+    <section class="main-content" aria-label="intro">
+      <!-- You can add a hero / explainer here if you like -->
+    </section>
+
+    <!-- CALCULATOR (RIGHT ON DESKTOP) -->
+    <aside class="calculator-wrap" aria-labelledby="calc-heading">
+      <div class="calculator">
+        <h2 id="calc-heading" class="section-title">Calculator</h2>
+
+        <!-- Budget & waitlist banner -->
+        <div id="waitlistBanner" class="banner-warn hidden">
+          ⚠️ High demand expected — your utility territory may **waitlist** applications once funds are claimed.
+        </div>
+
+        <table class="budget-table" aria-describedby="budget-note">
+          <thead>
+            <tr>
+              <th>Budget Bucket</th>
+              <th>Total Budget</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Storage Incentives</td>
+              <td>$280,000,000</td>
+            </tr>
+            <tr>
+              <td>Solar Incentives</td>
+              <td>$18,000,000</td>
+            </tr>
+          </tbody>
+        </table>
+        <p id="budget-note" class="help">
+          *Static totals shown. Territories may waitlist when demand exceeds remaining funds.
+        </p>
+
+        <!-- Utility + gating (auto-detected if you use PA polygons) -->
+        <div class="form-field">
+          <label for="utility">Utility Territory (auto-detected from address if possible)</label>
+          <select id="utility" name="utility" aria-describedby="utility-status">
+            <option value="">Select or auto-detect below</option>
+            <option value="PGE">PG&amp;E</option>
+            <option value="SCE">SCE</option>
+            <option value="SDGE">SDG&amp;E</option>
+            <option value="SCG">SoCalGas</option>
+            <option value="LADWP">LADWP</option>
+            <option value="OTHER">Other</option>
+          </select>
+          <div id="utility-status" class="help" style="margin-top: .5rem;">
+            Status: <span id="utilityStatusPill" class="status-pill status-pending">Select / detect</span>
+            <span id="utilityStatusText"></span>
+          </div>
+        </div>
+
+        <!-- Address checker -->
+        <section class="address-check" aria-labelledby="addr-title">
+          <h3 id="addr-title">Quick Address Check (DAC / Fire Tier 2-3 / PSPS / Utility)</h3>
+
+          <div class="form-field">
+            <label for="addressInput">Address</label>
+            <input id="addressInput" type="text" placeholder="123 Main St, City, CA" autocomplete="street-address" />
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="checkAddressBtn" class="btn-primary">Check Address</button>
+            <button type="button" id="clearAddressBtn" class="btn-secondary">Clear</button>
+          </div>
+
+          <div id="addressStatus" class="address-status hidden" role="status" aria-live="polite"></div>
+          <div id="miniMap" class="hidden" aria-label="Address preview map"></div>
+
+          <small class="help">
+            Uses ArcGIS REST queries. Results are advisory only—confirm with official tools.
+          </small>
+        </section>
+
+        <!-- Income auto-fill with HUD -->
+        <section class="address-check" aria-labelledby="hud-title">
+          <h3 id="hud-title">Income Auto‑Fill (HUD)</h3>
+
+          <div class="form-field">
+            <label for="hudZip">ZIP Code</label>
+            <input id="hudZip" type="text" inputmode="numeric" pattern="\\d{5}" placeholder="e.g., 90001" />
+          </div>
+
+          <div class="form-field">
+          <label for="hudHousehold">Household Size</label>
+            <input id="hudHousehold" type="number" min="1" step="1" value="4" />
+          </div>
+
+          <div class="form-field">
+            <label for="hudIncome">Annual Household Income ($)</label>
+            <input id="hudIncome" type="number" min="0" step="100" placeholder="e.g., 55000" />
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="hudFetchBtn" class="btn-primary">Fetch & auto‑fill AMI%</button>
+          </div>
+
+          <div id="hudStatus" class="help" role="status" aria-live="polite"></div>
+          <small class="help">
+            Requires a HUD USER API key. We approximate AMI% as income ÷ Median Family Income (MFI) × 100.
+          </small>
+        </section>
+
+        <form id="calcForm" novalidate data-testid="calc-form">
+          <!-- 1 -->
+          <div class="form-field" data-required>
+            <label for="customerType">1. Host Customer Class</label>
+            <select id="customerType" name="customerType" data-testid="customerType" required aria-describedby="customerType-help">
+              <option value="">Select type</option>
+              <option value="residential-single">Residential Single-Family</option>
+              <option value="residential-multi">Residential Multifamily</option>
+              <option value="commercial">Commercial/Business</option>
+              <option value="industrial">Industrial/Agricultural</option>
+            </select>
+            <small id="customerType-help" class="help">
+              Must be utility customer of record; rentals need explanation letter.
+            </small>
+            <p class="error" id="customerType-error" hidden></p>
+          </div>
+
+          <!-- 2 -->
+          <div class="form-field">
+            <label for="inDAC">2. Disadvantaged Community (DAC)?</label>
+            <select id="inDAC" name="inDAC" data-testid="inDAC">
+              <option value=""></option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <!-- 3 -->
+          <div class="form-field">
+            <label for="inFire">3. Tier 2/3 Wildfire Threat Zone?</label>
+            <select id="inFire" name="inFire" data-testid="inFire">
+              <option value=""></option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <!-- 4 -->
+          <div class="form-field">
+            <label for="inPSPS">4. Located in a PSPS Shutoff Area?</label>
+            <select id="inPSPS" name="inPSPS" data-testid="inPSPS" aria-describedby="inPSPS-help">
+              <option value=""></option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+            <small id="inPSPS-help" class="help">
+              Refer to CPUC PSPS lookup tool separate from this calculator.
+            </small>
+          </div>
+
+          <!-- 5 -->
+          <div class="form-field">
+            <label for="amiPercent">5. Household income as % of AMI (auto‑filled or manual)</label>
+            <input
+              type="number"
+              id="amiPercent"
+              name="amiPercent"
+              min="0"
+              max="300"
+              step="0.1"
+              placeholder="e.g., 60 (means 60% of AMI)"
+            />
+            <small class="help">
+              If ≤ 80%, you’re considered low‑income for SGIP Equity.
+            </small>
+          </div>
+
+          <!-- 6 -->
+          <div class="form-field">
+            <label for="careProgram">6. Participates in CARE / FERA / ESA?</label>
+            <select id="careProgram" name="careProgram" data-testid="careProgram">
+              <option value=""></option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="unsure">Unsure</option>
+            </select>
+          </div>
+
+          <!-- 7 -->
+          <div class="form-field">
+            <label for="squareFootage">7. Home Square Footage (optional)</label>
+            <input
+              type="number"
+              id="squareFootage"
+              name="squareFootage"
+              min="0"
+              placeholder="e.g., 2000"
+              inputmode="numeric"
+              data-testid="squareFootage"
+            />
+            <small class="help">
+              If Solar PV size is blank, we’ll estimate using 0.0035&nbsp;kW per ft² (≈ 7&nbsp;kW for 2,000&nbsp;ft²).
+            </small>
+          </div>
+
+          <!-- 8 -->
+          <div class="form-field" data-required>
+            <label for="capacity">8. Storage Capacity (kWh)</label>
+            <input
+              type="number"
+              id="capacity"
+              name="capacity"
+              min="0"
+              step="0.1"
+              value="15"
+              placeholder="Default 15 kWh"
+              inputmode="decimal"
+              required
+              data-testid="capacity"
+            />
+            <p class="error" id="capacity-error" hidden></p>
+          </div>
+
+          <!-- 9 -->
+          <div class="form-field">
+            <label for="solarCapacity">9. Solar PV Capacity (kW)</label>
+            <input
+              type="number"
+              id="solarCapacity"
+              name="solarCapacity"
+              min="0"
+              step="0.1"
+              value="5"
+              placeholder="Default 5 kW (or leave blank)"
+              inputmode="decimal"
+              data-testid="solarCapacity"
+            />
+          </div>
+
+          <!-- 10 -->
+          <div class="form-field">
+            <label for="backup">10. Backup Capability?</label>
+            <select id="backup" name="backup" data-testid="backup">
+              <option value=""></option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="btnCheck" class="btn-primary" data-testid="calculate" disabled>
+              Calculate SGIP Incentive
+            </button>
+            <button type="button" id="btnExport" class="btn-secondary" disabled>
+              Export PDF summary
+            </button>
+            <button type="button" id="btnReset" class="btn-secondary" data-testid="reset">
+              Clear
+            </button>
+          </div>
+        </form>
+
+        <output
+          id="result"
+          class="result"
+          role="status"
+          aria-live="polite"
+          data-testid="result"
+          hidden
+        ></output>
+      </div>
+    </aside>
+
+    <!-- MAPS (BOTTOM) -->
     <section class="maps" aria-labelledby="maps-heading">
       <h2 id="maps-heading" class="section-title">Reference Maps &amp; Tools</h2>
 
@@ -312,268 +599,6 @@
         </p>
       </article>
     </section>
-
-    <aside class="calculator" aria-labelledby="calc-heading">
-      <h2 id="calc-heading" class="section-title">Calculator</h2>
-
-      <!-- Budget & waitlist banner -->
-      <div id="waitlistBanner" class="banner-warn hidden">
-        ⚠️ High demand expected — your utility territory may **waitlist** applications once funds are claimed.
-      </div>
-
-      <table class="budget-table" aria-describedby="budget-note">
-        <thead>
-          <tr>
-            <th>Budget Bucket</th>
-            <th>Total Budget</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Storage Incentives</td>
-            <td>$280,000,000</td>
-          </tr>
-          <tr>
-          <td>Solar Incentives</td>
-            <td>$18,000,000</td>
-          </tr>
-        </tbody>
-      </table>
-      <p id="budget-note" class="help">
-        *Static totals shown. Territories may waitlist when demand exceeds remaining funds.
-      </p>
-
-      <!-- Utility + gating -->
-      <div class="form-field">
-        <label for="utility">Utility Territory</label>
-        <select id="utility" name="utility" aria-describedby="utility-status">
-          <option value="">Select your utility</option>
-          <option value="PGE">PG&amp;E</option>
-          <option value="SCE">SCE</option>
-          <option value="SDGE">SDG&amp;E</option>
-          <option value="SCG">SoCalGas</option>
-          <option value="LADWP">LADWP</option>
-          <option value="OTHER">Other</option>
-        </select>
-        <div id="utility-status" class="help" style="margin-top: .5rem;">
-          Status: <span id="utilityStatusPill" class="status-pill status-pending">Select a utility</span>
-          <span id="utilityStatusText"></span>
-        </div>
-      </div>
-
-      <!-- Address checker -->
-      <section class="address-check" aria-labelledby="addr-title">
-        <h3 id="addr-title">Quick Address Check (DAC / Fire Tier 2-3 / PSPS)</h3>
-
-        <div class="form-field">
-          <label for="addressInput">Address</label>
-          <input id="addressInput" type="text" placeholder="123 Main St, City, CA" autocomplete="street-address" />
-        </div>
-
-        <div class="form-actions">
-          <button type="button" id="checkAddressBtn" class="btn-primary">Check Address Against Maps</button>
-          <button type="button" id="clearAddressBtn" class="btn-secondary">Clear</button>
-        </div>
-
-        <div id="addressStatus" class="address-status hidden" role="status" aria-live="polite"></div>
-        <div id="miniMap" class="hidden" aria-label="Address preview map"></div>
-
-        <small class="help">
-          Uses ArcGIS REST queries. Results are advisory only—confirm with official tools.
-        </small>
-      </section>
-
-      <!-- Income auto-fill with HUD -->
-      <section class="address-check" aria-labelledby="hud-title">
-        <h3 id="hud-title">Income Auto‑Fill (HUD)</h3>
-
-        <div class="form-field">
-          <label for="hudZip">ZIP Code</label>
-          <input id="hudZip" type="text" inputmode="numeric" pattern="\\d{5}" placeholder="e.g., 90001" />
-        </div>
-
-        <div class="form-field">
-          <label for="hudHousehold">Household Size</label>
-          <input id="hudHousehold" type="number" min="1" step="1" value="4" />
-        </div>
-
-        <div class="form-field">
-          <label for="hudIncome">Annual Household Income ($)</label>
-          <input id="hudIncome" type="number" min="0" step="100" placeholder="e.g., 55000" />
-        </div>
-
-        <div class="form-actions">
-          <button type="button" id="hudFetchBtn" class="btn-primary">Fetch & auto‑fill AMI%</button>
-        </div>
-
-        <div id="hudStatus" class="help" role="status" aria-live="polite"></div>
-        <small class="help">
-          Requires a HUD USER API key. We approximate AMI% as income ÷ Median Family Income (MFI). If you prefer,
-          we can switch to the household‑size adjusted 100% AMI field if your PA requires it.
-        </small>
-      </section>
-
-      <form id="calcForm" novalidate data-testid="calc-form">
-        <!-- 1 -->
-        <div class="form-field" data-required>
-          <label for="customerType">1. Host Customer Class</label>
-          <select id="customerType" name="customerType" data-testid="customerType" required aria-describedby="customerType-help">
-            <option value="">Select type</option>
-            <option value="residential-single">Residential Single-Family</option>
-            <option value="residential-multi">Residential Multifamily</option>
-            <option value="commercial">Commercial/Business</option>
-            <option value="industrial">Industrial/Agricultural</option>
-          </select>
-          <small id="customerType-help" class="help">
-            Must be utility customer of record; rentals need explanation letter.
-          </small>
-          <p class="error" id="customerType-error" hidden></p>
-        </div>
-
-        <!-- 2 -->
-        <div class="form-field">
-          <label for="inDAC">2. Disadvantaged Community (DAC)?</label>
-          <select id="inDAC" name="inDAC" data-testid="inDAC">
-            <option value=""></option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-
-        <!-- 3 -->
-        <div class="form-field">
-          <label for="inFire">3. Tier 2/3 Wildfire Threat Zone?</label>
-          <select id="inFire" name="inFire" data-testid="inFire">
-            <option value=""></option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-
-        <!-- 4 -->
-        <div class="form-field">
-          <label for="inPSPS">4. Located in a PSPS Shutoff Area?</label>
-          <select id="inPSPS" name="inPSPS" data-testid="inPSPS" aria-describedby="inPSPS-help">
-            <option value=""></option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-          <small id="inPSPS-help" class="help">
-            Refer to CPUC PSPS lookup tool separate from this calculator.
-          </small>
-        </div>
-
-        <!-- 5 -->
-        <div class="form-field">
-          <label for="amiPercent">5. Household income as % of AMI (auto‑filled or manual)</label>
-          <input
-            type="number"
-            id="amiPercent"
-            name="amiPercent"
-            min="0"
-            max="300"
-            step="0.1"
-            placeholder="e.g., 60 (means 60% of AMI)"
-          />
-          <small class="help">
-            If ≤ 80%, you’re considered low‑income for SGIP Equity.
-          </small>
-        </div>
-
-        <!-- 6 -->
-        <div class="form-field">
-          <label for="careProgram">6. Participates in CARE / FERA / ESA?</label>
-          <select id="careProgram" name="careProgram" data-testid="careProgram">
-            <option value=""></option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-            <option value="unsure">Unsure</option>
-          </select>
-        </div>
-
-        <!-- 7 -->
-        <div class="form-field">
-          <label for="squareFootage">7. Home Square Footage (optional)</label>
-          <input
-            type="number"
-            id="squareFootage"
-            name="squareFootage"
-            min="0"
-            placeholder="e.g., 2000"
-            inputmode="numeric"
-            data-testid="squareFootage"
-          />
-          <small class="help">
-            If Solar PV size is blank, we’ll estimate using 0.0035&nbsp;kW per ft² (≈ 7&nbsp;kW for 2,000&nbsp;ft²).
-          </small>
-        </div>
-
-        <!-- 8 -->
-        <div class="form-field" data-required>
-          <label for="capacity">8. Storage Capacity (kWh)</label>
-          <input
-            type="number"
-            id="capacity"
-            name="capacity"
-            min="0"
-            step="0.1"
-            value="15"
-            placeholder="Default 15 kWh"
-            inputmode="decimal"
-            required
-            data-testid="capacity"
-          />
-          <p class="error" id="capacity-error" hidden></p>
-        </div>
-
-        <!-- 9 -->
-        <div class="form-field">
-          <label for="solarCapacity">9. Solar PV Capacity (kW)</label>
-          <input
-            type="number"
-            id="solarCapacity"
-            name="solarCapacity"
-            min="0"
-            step="0.1"
-            value="5"
-            placeholder="Default 5 kW (or leave blank)"
-            inputmode="decimal"
-            data-testid="solarCapacity"
-          />
-        </div>
-
-        <!-- 10 -->
-        <div class="form-field">
-          <label for="backup">10. Backup Capability?</label>
-          <select id="backup" name="backup" data-testid="backup">
-            <option value=""></option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" id="btnCheck" class="btn-primary" data-testid="calculate" disabled>
-            Calculate SGIP Incentive
-          </button>
-          <button type="button" id="btnExport" class="btn-secondary" disabled>
-            Export PDF summary
-          </button>
-          <button type="button" id="btnReset" class="btn-secondary" data-testid="reset">
-            Clear
-          </button>
-        </div>
-      </form>
-
-      <output
-        id="result"
-        class="result"
-        role="status"
-        aria-live="polite"
-        data-testid="result"
-        hidden
-      ></output>
-    </aside>
   </main>
 
   <footer class="site-footer" role="contentinfo">
@@ -606,6 +631,14 @@
       pspsUrl:
         "https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query",
 
+      // *** NEW: Program Administrator / Utility territories polygon ***
+      // Replace with your real FeatureServer layer that contains a PA / utility name field
+      paTerritoriesUrl:
+        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/SGIP_PA_Territories/FeatureServer/0/query",
+
+      // Field in the PA layer that holds the PA / utility code you want (PGE, SCE, SDGE, SCG, LADWP, OTHER)
+      paField: "UTILITY_CODE", // <-- change to match your schema
+
       // Program open dates
       openDates: {
         IOUs: "2025-05-20", // PG&E, SCE, SDG&E, SoCalGas
@@ -615,8 +648,8 @@
       // HUD API
       hud: {
         apiKey: "",           // <<<------- PASTE YOUR HUD USER API KEY HERE
-        year: 2024,           // change if you need a specific year
-        baseZipUrl: "https://www.huduser.gov/hudapi/public/il/v2/zip" // /{zip}?year=YYYY
+        year: 2024,
+        baseZipUrl: "https://www.huduser.gov/hudapi/public/il/v2/zip"
       }
     };
 
@@ -660,7 +693,6 @@
       hudIncome: "#hudIncome",
       hudFetchBtn: "#hudFetchBtn",
       hudStatus: "#hudStatus",
-
       amiPercent: "#amiPercent"
     };
 
@@ -669,22 +701,13 @@
     const money2 = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const number1 = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
-    const ADDRESS_CACHE_KEY = "sgipAddressCache_v3";
-    function loadCache() {
-      try { return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {}; } catch { return {}; }
-    }
-    function saveCache(cache) {
-      try { localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(cache)); } catch {}
-    }
+    const ADDRESS_CACHE_KEY = "sgipAddressCache_v4";
+    function loadCache() { try { return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {}; } catch { return {}; } }
+    function saveCache(cache) { try { localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(cache)); } catch {} }
     const addressCache = loadCache();
 
-    function todayISO() {
-      return new Date().toISOString().slice(0,10);
-    }
-
-    function isAfterOrEqual(dateISO1, dateISO2) {
-      return new Date(dateISO1) >= new Date(dateISO2);
-    }
+    function todayISO() { return new Date().toISOString().slice(0,10); }
+    function isAfterOrEqual(dateISO1, dateISO2) { return new Date(dateISO1) >= new Date(dateISO2); }
 
     function setUtilityStatus(utilityCode) {
       const pill = qs(SELECTORS.utilityStatusPill);
@@ -701,11 +724,7 @@
       let pending = false;
 
       if (IOU_CODES.includes(utilityCode)) {
-        if (isAfterOrEqual(today, CONFIG.openDates.IOUs)) {
-          open = true;
-        } else {
-          pending = true;
-        }
+        if (isAfterOrEqual(today, CONFIG.openDates.IOUs)) open = true; else pending = true;
       } else if (utilityCode === "LADWP") {
         pending = true;
       } else if (utilityCode === "OTHER") {
@@ -734,7 +753,7 @@
         } else if (utilityCode === "LADWP") {
           text.innerHTML = ` LADWP opens later in 2025.`;
         } else {
-          text.innerHTML = ` Select a utility to continue.`;
+          text.innerHTML = ` Select / detect a utility to continue.`;
         }
         calcBtn.disabled = true;
         exportBtn.disabled = true;
@@ -777,15 +796,9 @@
     }
 
     function equityEligibilityReason({ amiPercent, careProgram, inDAC }) {
-      if (typeof amiPercent === "number" && !isNaN(amiPercent) && amiPercent <= 80) {
-        return "Income ≤ 80% AMI";
-      }
-      if (careProgram === true) {
-        return "Participating in CARE/FERA/ESA";
-      }
-      if (inDAC === true) {
-        return "Located in a Disadvantaged Community (SB 535)";
-      }
+      if (typeof amiPercent === "number" && !isNaN(amiPercent) && amiPercent <= 80) return "Income ≤ 80% AMI";
+      if (careProgram === true) return "Participating in CARE/FERA/ESA";
+      if (inDAC === true) return "Located in a Disadvantaged Community (SB 535)";
       return null;
     }
 
@@ -858,17 +871,13 @@ autoPvKwUsed !== null
     async function fetchHudAMIByZip(zip, year, apiKey) {
       if (!apiKey) throw new Error("No HUD API key configured in CONFIG.hud.apiKey");
       const url = `${CONFIG.hud.baseZipUrl}/${zip}?year=${year}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${apiKey}` }
-      });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
       if (!res.ok) throw new Error(`HUD API error: ${res.status}`);
       const json = await res.json();
       return json;
     }
 
     function computeAmiPercentFromHudResponse(json, income) {
-      // HUD v2 returns: { "data": [ { "medianFamilyIncome": number, ... } ] }
-      // We approximate AMI% = income / MFI * 100
       const d = json?.data?.[0];
       if (!d || typeof d.medianFamilyIncome !== "number") {
         throw new Error("Could not find Median Family Income in HUD response.");
@@ -912,7 +921,7 @@ autoPvKwUsed !== null
       });
 
       const res = await fetch(`${layerQueryUrl}?${params.toString()}`);
-      if (!res.ok) throw new Error("Layer query failed");
+      if (!res.ok) throw new Error(`Layer query failed: ${res.status} ${layerQueryUrl}`);
       const json = await res.json();
       return (json.features || []).length > 0 ? json.features[0] : null;
     }
@@ -923,6 +932,30 @@ autoPvKwUsed !== null
         if (f) return f;
       }
       return null;
+    }
+
+    async function detectUtilityFromPoint(point) {
+      if (!CONFIG.paTerritoriesUrl) return null;
+
+      const params = new URLSearchParams({
+        f: "json",
+        geometry: JSON.stringify({ x: point.x, y: point.y, spatialReference: { wkid: 4326 } }),
+        geometryType: "esriGeometryPoint",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "*",
+        returnGeometry: "false"
+      });
+
+      const url = `${CONFIG.paTerritoriesUrl}?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`PA boundary query failed: ${res.status}`);
+      const json = await res.json();
+      const feat = json.features?.[0];
+      if (!feat) return null;
+
+      const code = feat.attributes?.[CONFIG.paField];
+      return code || null;
     }
 
     /* ---------- tiny map ---------- */
@@ -941,11 +974,7 @@ autoPvKwUsed !== null
         miniMarker = L.marker([lat, lon]).addTo(miniMap);
       } else {
         miniMap.setView([lat, lon], 14);
-        if (miniMarker) {
-          miniMarker.setLatLng([lat, lon]);
-        } else {
-          miniMarker = L.marker([lat, lon]).addTo(miniMap);
-        }
+        if (miniMarker) miniMarker.setLatLng([lat, lon]); else miniMarker = L.marker([lat, lon]).addTo(miniMap);
       }
     }
 
@@ -1004,7 +1033,6 @@ autoPvKwUsed !== null
       const checkBtn = qs(SELECTORS.checkAddressBtn);
       const clearBtn = qs(SELECTORS.clearAddressBtn);
       const statusBox = qs(SELECTORS.addressStatus);
-      const waitlistBanner = qs(SELECTORS.waitlistBanner);
 
       const inDACSelect = qs(SELECTORS.inDAC);
       const inFireSelect = qs(SELECTORS.inFire);
@@ -1031,26 +1059,14 @@ autoPvKwUsed !== null
         const hhSize = parseInt(hudHousehold.value, 10);
         const income = parseFloat(hudIncome.value);
 
-        if (!zip || zip.length !== 5) {
-          hudStatus.textContent = "Please enter a 5-digit ZIP code.";
-          return;
-        }
-        if (!hhSize || hhSize <= 0) {
-          hudStatus.textContent = "Please enter a valid household size.";
-          return;
-        }
-        if (isNaN(income) || income <= 0) {
-          hudStatus.textContent = "Please enter a valid annual household income.";
-          return;
-        }
+        if (!zip || zip.length !== 5) { hudStatus.textContent = "Please enter a 5-digit ZIP code."; return; }
+        if (!hhSize || hhSize <= 0)   { hudStatus.textContent = "Please enter a valid household size."; return; }
+        if (isNaN(income) || income <= 0) { hudStatus.textContent = "Please enter a valid annual household income."; return; }
 
         try {
           hudStatus.textContent = "Fetching HUD income limits...";
           const json = await fetchHudAMIByZip(zip, CONFIG.hud.year, CONFIG.hud.apiKey);
-
-          // NOTE: This is an approximation using MFI; change if you want size-adjusted 100% AMI.
           const pct = computeAmiPercentFromHudResponse(json, income);
-
           amiPercentInput.value = pct.toFixed(1);
           hudStatus.textContent = `Estimated AMI% = ${pct.toFixed(1)}%. (income ÷ MFI × 100)`;
         } catch (e) {
@@ -1059,7 +1075,7 @@ autoPvKwUsed !== null
         }
       });
 
-      // Address checks
+      // Address checks (now also auto-detect utility)
       checkBtn.addEventListener("click", async () => {
         const raw = addressInput.value.trim();
         if (!raw) {
@@ -1068,12 +1084,13 @@ autoPvKwUsed !== null
         }
         const address = raw.toLowerCase();
 
+        // From cache?
         if (addressCache[address]) {
           const c = addressCache[address];
           setAddressStatus(
-            `[cached] DAC: ${c.dac ? "Yes" : "No"} • Fire Tier 2/3: ${c.fire ? "Yes" : "No"} • PSPS: ${c.psps ? "Yes" : "No"}. ` +
-            `(${c.lat.toFixed(5)}, ${c.lon.toFixed(5)})`,
+            `[cached]\nUtility: ${c.utility || "—"}\nDAC: ${c.dac ? "Yes" : "No"} • Fire Tier 2/3: ${c.fire ? "Yes" : "No"} • PSPS: ${c.psps ? "Yes" : "No"}\n(${c.lat.toFixed(5)}, ${c.lon.toFixed(5)})`,
             [
+              c.utility || "",
               c.dac ? "DAC" : "",
               c.fire ? "Tier 2/3" : "",
               c.psps ? "PSPS" : ""
@@ -1082,21 +1099,24 @@ autoPvKwUsed !== null
           inDACSelect.value = c.dac ? "yes" : "no";
           inFireSelect.value = c.fire ? "yes" : "no";
           inPSPSSelect.value = c.psps ? "yes" : "no";
+          if (c.utility) {
+            utilitySelect.value = c.utility;
+            setUtilityStatus(c.utility);
+          }
           updateMiniMap(c.lat, c.lon);
           return;
         }
 
-        setAddressStatus("Geocoding and checking layers...");
+        setAddressStatus("Geocoding address...");
         try {
           const point = await geocodeAddress(raw);
           const lat = point.y;
           const lon = point.x;
 
+          setAddressStatus("Checking DAC / Fire / PSPS layers...");
           const [dacFeature, fireFeature, pspsFeature] = await Promise.all([
             CONFIG.sb535Url ? pointInLayer(point, CONFIG.sb535Url) : null,
-            CONFIG.wildfireTierUrls?.length
-              ? pointInAnyLayer(point, CONFIG.wildfireTierUrls)
-              : null,
+            CONFIG.wildfireTierUrls?.length ? pointInAnyLayer(point, CONFIG.wildfireTierUrls) : null,
             CONFIG.pspsUrl ? pointInLayer(point, CONFIG.pspsUrl) : null,
           ]);
 
@@ -1108,24 +1128,43 @@ autoPvKwUsed !== null
           inFireSelect.value = fire ? "yes" : "no";
           inPSPSSelect.value = psps ? "yes" : "no";
 
+          // Auto-detect PA / Utility
+          let utilDetected = null;
+          if (CONFIG.paTerritoriesUrl) {
+            setAddressStatus("Detecting Program Administrator / Utility territory...");
+            try {
+              utilDetected = await detectUtilityFromPoint(point);
+              if (utilDetected) {
+                utilitySelect.value = utilDetected;
+                setUtilityStatus(utilDetected);
+              }
+            } catch (e) {
+                console.warn("PA detection failed:", e);
+            }
+          }
+
           const badges = [];
+          if (utilDetected) badges.push(utilDetected);
           if (dac) badges.push("DAC");
           if (fire) badges.push("Tier 2/3");
           if (psps) badges.push("PSPS");
 
           setAddressStatus(
-            `Found coordinates: (${lat.toFixed(5)}, ${lon.toFixed(5)}). ` +
-            `DAC: ${dac ? "Yes" : "No"} • Fire Tier 2/3: ${fire ? "Yes" : "No"} • PSPS: ${psps ? "Yes" : "No"}.`,
+            `Found coordinates: (${lat.toFixed(5)}, ${lon.toFixed(5)})\nUtility: ${utilDetected || "—"}\nDAC: ${dac ? "Yes" : "No"} • Fire Tier 2/3: ${fire ? "Yes" : "No"} • PSPS: ${psps ? "Yes" : "No"}.`,
             badges
           );
 
           updateMiniMap(lat, lon);
 
-          addressCache[address] = { dac, fire, psps, lat, lon, ts: Date.now() };
+          addressCache[address] = { utility: utilDetected, dac, fire, psps, lat, lon, ts: Date.now() };
           saveCache(addressCache);
         } catch (err) {
           console.error(err);
-          setAddressStatus("Could not determine eligibility from address. Check console & layer URLs.");
+          setAddressStatus(
+            "Address eligibility check failed.\n" +
+            "• Step that failed: " + (err.message || err) + "\n" +
+            "• Tip: Verify your ArcGIS layer URLs (CONFIG.*Url) and network console."
+          );
         }
       });
 
