@@ -1,118 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF‑8">
-  <meta name="viewport" content="width=device‑width, initial‑scale=1.0">
-  <title>SGIP Residential Solar & Storage Equity Calculator</title>
+  <meta charset="utf-8" />
+  <title>SGIP Residential Solar & Storage Equity – Incentive Estimator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
   <style>
-    body { background: #F5F5F5; padding: 2rem; font-family: Arial, sans-serif; }
-    .hero { background: #003399; color: #fff; padding: 1rem; margin-bottom:2rem; border-radius:5px; }
-    .fact-icon { font-size: 2rem; margin-right: 0.5rem; color: #003399;}
-    .result-box { background: #fff; padding:1.5rem; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
-    .map-container { height: 350px; width: 100%; margin-top:1rem; border:1px solid #ccc; }
+    :root{
+      --sgip-blue:#003399;
+      --sgip-light:#e8efff;
+      --sgip-accent:#00a0e1;
+    }
+    body{font-family:"Inter",sans-serif;background:#f9fafc;color:#333;}
+    .navbar{background:var(--sgip-blue);}
+    .navbar-brand{font-weight:600;color:#fff!important}
+    .banner{background:linear-gradient(135deg,var(--sgip-blue) 0%,var(--sgip-accent) 100%);color:#fff;padding:3rem 1rem}
+    .banner h1{font-weight:600;margin-bottom:.3rem}
+    .banner p{opacity:.9}
+    .card-form{box-shadow:0 4px 16px rgba(0,0,0,.05);border:0;border-radius:10px}
+    .result-card{background:var(--sgip-light);border:0;border-radius:10px}
+    .map-frame{border:0;width:100%;height:300px;border-radius:10px}
+    .small-title{font-size:.9rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--sgip-blue)}
+    .form-select,.form-control{border-radius:6px}
+    .btn-primary{background:var(--sgip-blue);border:none}
+    footer{font-size:.85rem;color:#666;padding:1rem 0}
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="hero text-center">
-      <h1>Residential Solar &amp; Storage Equity Calculator</h1>
-      <p>Estimate your SGIP incentive based on CPUC fact sheet criteria.</p>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark">
+    <div class="container-lg">
+      <a class="navbar-brand" href="#">SGIP Incentive Estimator</a>
     </div>
+  </nav>
 
-    <form id="rsse-form">
-      <div class="row gx-3 gy-2">
-        <div class="col-md-6">
-          <label>📍 Address</label>
-          <input type="text" id="address" class="form-control" placeholder="1234 Main St, CA" required>
-        </div>
-        <div class="col-md-6">
-          <label>⚡ Utility Provider</label>
-          <select id="utility" class="form-select">
-            <option value="">Select</option><option>PG&E</option><option>SCE</option><option>SDG&E</option><option>LADWP</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label>🏠 Household Type</label>
-          <select id="household" class="form-select">
-            <option value="single">Single‑Family</option><option value="multi">Multifamily</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label>CARE / FERA / ESA or SASH/DAC‑SASH participation?</label>
-          <select id="lowprog" class="form-select">
-            <option value="no">No</option><option value="yes">Yes</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label>Annual Income ≤ 80% AMI?</label>
-          <select id="lowincome" class="form-select">
-            <option value="no">No</option><option value="yes">Yes</option>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label>Battery Storage (kWh)</label>
-          <input type="number" id="storage" class="form-control" step="0.1" min="0">
-        </div>
-        <div class="col-md-4">
-          <label>Solar System Size (kW)</label>
-          <input type="number" id="solar" class="form-control" step="0.1" min="0">
-        </div>
-        <div class="col-md-4">
-          <label>IRA Tax Credit % (federal)</label>
-          <input type="number" id="ira" class="form-control" step="1" min="0" max="100" value="30">
+  <!-- Hero -->
+  <section class="banner text-center">
+    <div class="container-lg">
+      <h1 class="display-5">Residential Solar & Storage Equity Program</h1>
+      <p class="lead mb-0">Quickly check eligibility & estimate your incentive.</p>
+    </div>
+  </section>
+
+  <!-- Main -->
+  <section class="py-5">
+    <div class="container-lg">
+      <div class="row g-4">
+
+        <!-- Form -->
+        <div class="col-lg-6">
+          <div class="card card-form p-4">
+            <h2 class="h5 mb-3">1. Tell us about your project</h2>
+
+            <form id="estimator">
+              <label class="small-title mb-2">Location</label>
+              <input id="address" class="form-control mb-3" placeholder="Street, City, CA" required>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="small-title mb-1">Utility</label>
+                  <select id="utility" class="form-select" required>
+                    <option value="">Choose…</option>
+                    <option>PG&amp;E</option><option>SCE</option><option>SDG&amp;E</option><option>LADWP</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="small-title mb-1">Property Type</label>
+                  <select id="ptype" class="form-select">
+                    <option value="single">Single‑Family</option>
+                    <option value="multi">Multifamily (5+ units)</option>
+                  </select>
+                </div>
+              </div>
+
+              <label class="small-title mb-2">Low‑Income Qualification</label>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <select id="prog" class="form-select">
+                    <option value="no">Not in CARE/FERA/SASH</option>
+                    <option value="yes">Enrolled in CARE/FERA/ESA/SASH</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <select id="income" class="form-select">
+                    <option value="no">Income &gt; 80 % AMI</option>
+                    <option value="yes">Income ≤ 80 % AMI</option>
+                  </select>
+                </div>
+              </div>
+
+              <label class="small-title mb-2">System Sizes</label>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <div class="input-group">
+                    <input id="battery" type="number" min="0" step="0.1" class="form-control" placeholder="Battery kWh">
+                    <span class="input-group-text">kWh</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="input-group">
+                    <input id="solar" type="number" min="0" step="0.1" class="form-control" placeholder="Solar kW">
+                    <span class="input-group-text">kW</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-grid mt-4">
+                <button class="btn btn-primary btn-lg">Estimate Incentive</button>
+              </div>
+            </form>
+          </div>
         </div>
 
-        <div class="col-12 text-center mt-3">
-          <button class="btn btn-primary btn-lg">Estimate Incentive</button>
+        <!-- Results -->
+        <div class="col-lg-6">
+          <div class="card result-card p-4 h-100">
+            <h2 class="h5 mb-3">2. Your Results</h2>
+            <div id="result">
+              <p class="text-muted">Fill the form and click “Estimate Incentive”.</p>
+            </div>
+            <h3 class="h6 mt-4">Map – DAC &amp; Fire‑Threat Layers</h3>
+            <iframe class="map-frame mt-2"
+              src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
+              title="CPUC Fire Threat Map"></iframe>
+          </div>
         </div>
-      </div>
-    </form>
 
-    <div class="result-box mt-5" id="result">
-      <h2>📊 Your Estimated Incentive</h2>
-      <p id="eligibility"></p>
-      <p id="summary"></p>
-      <hr>
-      <h4>🗺️ Eligibility Map (DAC / Fire Threat)</h4>
-      <div class="map-container">
-        <iframe src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2" width="100%" height="100%" style="border:0;"></iframe>
       </div>
     </div>
-  </div>
+  </section>
 
+  <footer class="text-center">
+    <div class="container-lg">
+      California Public Utilities Commission (SGIP) – Rates: $1,100 / kWh storage | $3,100 / kW solar (RSSE track)
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Core logic -->
   <script>
-    document.getElementById('rsse-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const prog = document.getElementById('lowprog').value === 'yes';
-      const inc = document.getElementById('lowincome').value === 'yes';
-      const household = document.getElementById('household').value;
-      const storage = parseFloat(document.getElementById('storage').value) || 0;
-      const solar = parseFloat(document.getElementById('solar').value) || 0;
-      const ira = parseFloat(document.getElementById('ira').value)/100 || 0;
+  const storageRate=1100, solarRate=3100;
+  document.getElementById('estimator').addEventListener('submit',e=>{
+    e.preventDefault();
+    const ptype=document.getElementById('ptype').value,
+          prog=document.getElementById('prog').value==='yes',
+          income=document.getElementById('income').value==='yes',
+          battery=parseFloat(document.getElementById('battery').value)||0,
+          solar=parseFloat(document.getElementById('solar').value)||0;
 
-      let eligible = false;
-      if(household==='single') eligible = prog || inc;
-      else eligible = prog;
+    const eligible = (ptype==='single') ? (prog||income) : prog;  // multifamily must prove program enrollment
 
-      const storageRate=1100; // $/kWh
-      const solarRate=3100;   // $/kW
-
-      const base = (storage * storageRate) + (solar * solarRate);
-      const net = base * (1 - ira);
-
-      const eligText = eligible
-        ? '✅ Eligible for Residential Solar & Storage Equity Program.'
-        : '❌ Not eligible — must meet low‑income or program criteria.';
-      const summary = storage>0 || solar>0
-        ? `Estimated SGIP incentive: $${base.toLocaleString(undefined,{maximumFractionDigits:0})}<br>
-           After ~${(ira*100).toFixed(0)}% federal tax credit: $${net.toLocaleString(undefined,{maximumFractionDigits:0})}`
-        : 'Enter a system size to get incentive estimate.';
-
-      document.getElementById('eligibility').innerHTML = eligText;
-      document.getElementById('summary').innerHTML = summary;
-    });
+    let html='';
+    if(!battery && !solar){
+      html='<p class="text-danger">Enter at least one system size.</p>';
+    }else if(!eligible){
+      html='<p class="text-danger fw-medium">Not eligible for RSSE: you must meet low‑income or program criteria.</p>';
+    }else{
+      const incentive=battery*storageRate + solar*solarRate;
+      html = `
+        <p class="fw-semibold text-success">✅ Eligible for Residential Solar & Storage Equity!</p>
+        <ul class="list-unstyled">
+          <li>Battery: <strong>${battery.toFixed(1)} kWh</strong> → $${(battery*storageRate).toLocaleString()}</li>
+          <li>Solar: <strong>${solar.toFixed(1)} kW</strong> → $${(solar*solarRate).toLocaleString()}</li>
+        </ul>
+        <h4 class="h6">Estimated Total Incentive</h4>
+        <p class="fs-4 fw-bold">$${incentive.toLocaleString()}</p>
+        <small class="text-muted">Actual amount depends on final SGIP reservation and available program budget.</small>
+      `;
+    }
+    document.getElementById('result').innerHTML=html;
+  });
   </script>
 </body>
 </html>
