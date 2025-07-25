@@ -1,22 +1,30 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
+  <meta name="color-scheme" content="light" />
   <title>SGIP Eligibility & Incentive Calculator</title>
 
+  <!-- Leaflet (for the small map preview) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-o9N1j7kGStG3v3lR82GkGzm1G3S2MKCkG4ZkT2f0Xpw="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o9N1j7kGStG3v3lR82GkGzm1G3S2MKCkG4ZkT2f0Xpw="
+    crossorigin=""
+    defer
+  ></script>
+
   <style>
-    /* -------------------------
-       Design tokens
-       ------------------------- */
     :root {
-      /* Colors */
       --color-primary: #fdb813;
-      --color-primary-contrast: #000;
       --color-secondary: #003c71;
       --color-accent: #005eb8;
-
       --color-bg: #f9f9f9;
       --color-surface: #fff;
       --color-text: #1f1f1f;
@@ -24,15 +32,11 @@
       --color-border: #ddd;
       --color-error: #c0392b;
 
-      /* Typography */
-      --font-body: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       --fs-base: 1rem;
       --fs-sm: 0.875rem;
       --fs-lg: 1.125rem;
       --fs-xl: clamp(1.25rem, 3vw, 1.75rem);
 
-      /* Spacing & layout */
       --space-1: 0.25rem;
       --space-2: 0.5rem;
       --space-3: 0.75rem;
@@ -41,135 +45,46 @@
       --space-6: 2rem;
 
       --radius: 0.5rem;
-
-      /* Elevation */
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-      --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.12);
-
-      /* Transitions */
       --transition: 160ms ease;
-
-      /* Focus ring */
       --focus-ring: 3px solid #2684ff;
     }
 
-    /* Dark theme */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --color-bg: #111;
-        --color-surface: #1a1a1a;
-        --color-text: #eee;
-        --color-text-muted: #aaa;
-        --color-border: #333;
-        --shadow-sm: none;
-        --shadow-md: none;
-      }
-    }
-
-    html[data-theme="dark"] {
-      --color-bg: #111;
-      --color-surface: #1a1a1a;
-      --color-text: #eee;
-      --color-text-muted: #aaa;
-      --color-border: #333;
-      --shadow-sm: none;
-      --shadow-md: none;
-    }
-
-    /* Respect reduced motion */
     @media (prefers-reduced-motion: reduce) {
-      * {
-        transition: none !important;
-        animation: none !important;
-        scroll-behavior: auto !important;
-      }
+      * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
     }
 
-    /* -------------------------
-       Base elements
-       ------------------------- */
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      min-height: 100%;
-    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { min-height: 100%; }
 
     body {
       margin: 0;
-      font-family: var(--font-body);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       background: var(--color-bg);
       color: var(--color-text);
       font-size: var(--fs-base);
       line-height: 1.5;
     }
 
-    a {
-      color: var(--color-accent);
-      text-decoration: none;
-    }
-    a:hover,
-    a:focus {
-      text-decoration: underline;
-    }
+    a { color: var(--color-accent); text-decoration: none; }
+    a:hover, a:focus { text-decoration: underline; }
 
-    img, iframe {
-      max-width: 100%;
-    }
+    h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--space-3); }
+    .section-title { font-size: var(--fs-lg); color: var(--color-secondary); margin-bottom: var(--space-3); }
 
-    h1, h2, h3 {
-      line-height: 1.2;
-      margin: 0 0 var(--space-3);
-    }
+    .skip-link { position: absolute; left: -999px; top: -999px; }
+    .skip-link:focus { position: static; background: var(--color-accent); color: #fff; padding: var(--space-2) var(--space-3); }
 
-    .section-title {
-      font-size: var(--fs-lg);
-      color: var(--color-secondary);
-      margin-bottom: var(--space-3);
-    }
-
-    /* Skip link */
-    .skip-link {
-      position: absolute;
-      left: -999px;
-      top: -999px;
-    }
-    .skip-link:focus {
-      position: static;
-      background: var(--color-accent);
-      color: #fff;
-      padding: var(--space-2) var(--space-3);
-    }
-
-    /* -------------------------
-       Layout
-       ------------------------- */
-    .site-header,
-    .site-footer {
-      padding: var(--space-4) var(--space-4);
+    .site-header, .site-footer {
+      padding: var(--space-4);
       background: var(--color-surface);
       box-shadow: var(--shadow-sm);
     }
-
     .site-title {
       font-size: var(--fs-xl);
       text-align: center;
       color: var(--color-primary);
       margin: 0;
-    }
-
-    .theme-toggle {
-      position: absolute;
-      top: var(--space-3);
-      right: var(--space-3);
-      background: transparent;
-      border: 2px solid var(--color-border);
-      border-radius: var(--radius);
-      padding: var(--space-2) var(--space-3);
-      cursor: pointer;
     }
 
     .container {
@@ -180,7 +95,6 @@
       padding: var(--space-4);
       margin: 0 auto;
     }
-
     @media (min-width: 768px) {
       .container {
         grid-template-columns: 60% 40%;
@@ -188,9 +102,6 @@
       }
     }
 
-    /* -------------------------
-       Maps
-       ------------------------- */
     .map-card {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
@@ -216,9 +127,6 @@
       display: block;
     }
 
-    /* -------------------------
-       Calculator
-       ------------------------- */
     .calculator {
       background: var(--color-surface);
       border: 1px solid var(--color-border);
@@ -229,10 +137,7 @@
       top: var(--space-4);
     }
 
-    .form-field {
-      margin-bottom: var(--space-4);
-    }
-
+    .form-field { margin-bottom: var(--space-4); }
     label {
       display: block;
       font-weight: 600;
@@ -240,15 +145,8 @@
       margin-bottom: var(--space-2);
     }
 
-    input,
-    select,
-    button {
-      font-size: var(--fs-base);
-      line-height: 1.2;
-    }
-
-    input,
-    select {
+    input, select, button { font-size: var(--fs-base); line-height: 1.2; }
+    input, select {
       width: 100%;
       padding: var(--space-3);
       border: 1px solid var(--color-border);
@@ -256,34 +154,14 @@
       background: transparent;
       color: inherit;
       transition: border-color var(--transition), box-shadow var(--transition);
-      min-height: 44px; /* touch target */
+      min-height: 44px;
     }
+    input:focus, select:focus, button:focus { outline: var(--focus-ring); outline-offset: 2px; }
 
-    input:focus,
-    select:focus,
-    button:focus {
-      outline: var(--focus-ring);
-      outline-offset: 2px;
-    }
+    .help { display: block; color: var(--color-text-muted); margin-top: var(--space-2); font-size: var(--fs-sm); }
+    .error { color: var(--color-error); font-size: var(--fs-sm); margin: var(--space-2) 0 0; }
 
-    .help {
-      display: block;
-      color: var(--color-text-muted);
-      margin-top: var(--space-2);
-      font-size: var(--fs-sm);
-    }
-
-    .error {
-      color: var(--color-error);
-      font-size: var(--fs-sm);
-      margin: var(--space-2) 0 0;
-    }
-
-    .form-actions {
-      display: flex;
-      gap: var(--space-3);
-      flex-wrap: wrap;
-    }
+    .form-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 
     button {
       border: none;
@@ -291,29 +169,13 @@
       padding: var(--space-3) var(--space-4);
       cursor: pointer;
       transition: background var(--transition), transform var(--transition);
-      min-height: 44px; /* touch target */
+      min-height: 44px;
     }
-    button:active {
-      transform: translateY(1px);
-    }
-
-    .btn-primary {
-      background: var(--color-primary);
-      color: #000;
-    }
-    .btn-primary:hover {
-      background: var(--color-accent);
-      color: #fff;
-    }
-
-    .btn-secondary {
-      background: transparent;
-      border: 1px solid var(--color-border);
-      color: inherit;
-    }
-    .btn-secondary:hover {
-      background: var(--color-border);
-    }
+    button:active { transform: translateY(1px); }
+    .btn-primary { background: var(--color-primary); color: #000; }
+    .btn-primary:hover { background: var(--color-accent); color: #fff; }
+    .btn-secondary { background: transparent; border: 1px solid var(--color-border); color: inherit; }
+    .btn-secondary:hover { background: var(--color-border); }
 
     .result {
       margin-top: var(--space-5);
@@ -327,12 +189,41 @@
       white-space: pre-line;
     }
 
-    /* -------------------------
-       Utilities
-       ------------------------- */
-    .hidden {
-      display: none !important;
+    .address-check {
+      background: #fff;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: var(--space-4);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--space-4);
     }
+    .address-status {
+      margin-top: var(--space-3);
+      padding: var(--space-3);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius);
+      font-size: var(--fs-sm);
+      background: #fafafa;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.4rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 0.25rem;
+      color: #000;
+      background: var(--color-primary);
+    }
+
+    #miniMap {
+      height: 250px;
+      margin-top: var(--space-3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+    }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -340,15 +231,6 @@
 
   <header class="site-header" role="banner">
     <h1 class="site-title">SGIP Eligibility &amp; Incentive Calculator</h1>
-
-    <button
-      id="themeToggle"
-      class="theme-toggle"
-      aria-label="Toggle dark mode"
-      data-testid="theme-toggle"
-    >
-      🌞 / 🌚
-    </button>
   </header>
 
   <main id="main" class="container" role="main">
@@ -358,11 +240,8 @@
       <article class="map-card" aria-labelledby="sb535-title">
         <h3 id="sb535-title" class="map-card__title">SB&nbsp;535 Disadvantaged Communities Map</h3>
         <p class="map-card__actions">
-          <a
-            href="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/"
-            target="_blank"
-            rel="noopener"
-          >🔎 Open full screen (best on mobile)</a>
+          <a href="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/"
+             target="_blank" rel="noopener">🔎 Open full screen (best on mobile)</a>
         </p>
         <iframe
           src="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/"
@@ -374,11 +253,8 @@
       <article class="map-card" aria-labelledby="capuc-title">
         <h3 id="capuc-title" class="map-card__title">Community Air Protection (CAP UC) Map</h3>
         <p class="map-card__actions">
-          <a
-            href="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
-            target="_blank"
-            rel="noopener"
-          >🔎 Open full screen (best on mobile)</a>
+          <a href="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
+             target="_blank" rel="noopener">🔎 Open full screen (best on mobile)</a>
         </p>
         <iframe
           src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
@@ -390,17 +266,36 @@
       <article class="map-card" aria-labelledby="sce-title">
         <h3 id="sce-title" class="map-card__title">SCE Shutoff (Outage Status) Tool</h3>
         <p class="map-card__actions">
-          <a
-            href="https://www.sce.com/outages-safety/outage-center/check-outage-status"
-            target="_blank"
-            rel="noopener"
-          >🔗 Check Public Safety Shutoff Status</a>
+          <a href="https://www.sce.com/outages-safety/outage-center/check-outage-status"
+             target="_blank" rel="noopener">🔗 Check Public Safety Shutoff Status</a>
         </p>
       </article>
     </section>
 
     <aside class="calculator" aria-labelledby="calc-heading">
       <h2 id="calc-heading" class="section-title">Calculator</h2>
+
+      <!-- Address checker -->
+      <section class="address-check" aria-labelledby="addr-title">
+        <h3 id="addr-title">Quick Address Check (DAC / Fire Tier 2-3 / PSPS)</h3>
+
+        <div class="form-field">
+          <label for="addressInput">Address</label>
+          <input id="addressInput" type="text" placeholder="123 Main St, City, CA" autocomplete="street-address" />
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="checkAddressBtn" class="btn-primary">Check Address Against Maps</button>
+          <button type="button" id="clearAddressBtn" class="btn-secondary">Clear</button>
+        </div>
+
+        <div id="addressStatus" class="address-status hidden" role="status" aria-live="polite"></div>
+        <div id="miniMap" class="hidden" aria-label="Address preview map"></div>
+
+        <small class="help">
+          Uses ArcGIS REST queries. Results are advisory only—confirm with official tools.
+        </small>
+      </section>
 
       <form id="calcForm" novalidate data-testid="calc-form">
         <!-- 1 -->
@@ -492,9 +387,9 @@
         <div class="form-field">
           <label for="govAssistance">8. Receiving any government assistance (e.g., SNAP, Medicaid, SSI, etc.)?</label>
           <select id="govAssistance" name="govAssistance" data-testid="govAssistance">
-          <option value=""></option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
+            <option value=""></option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
           </select>
         </div>
 
@@ -591,9 +486,31 @@
   </footer>
 
   <script>
-    /* -------------------------
-       Constants & config
-       ------------------------- */
+    /************************************************************
+     * CONFIG: Production ArcGIS endpoints
+     ************************************************************/
+    const CONFIG = {
+      geocodeUrl:
+        "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+
+      // SB 535 Disadvantaged Communities 2022 (Census Tracts & Tribal Areas) – layer 0
+      // Source: services1.arcgis.com/PCHfdHz4GlDNAhBb ... FeatureServer/0
+      sb535Url:
+        "https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query",
+
+      // CPUC Fire Threat Areas – Tier 3 (0) & Tier 2 (1)
+      // Source: services.arcgis.com/BLN4oKB0N1YSgvY8 ... FeatureServer
+      wildfireTierUrls: [
+        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query", // Tier 3
+        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query"  // Tier 2
+      ],
+
+      // CPUC Consolidated PSPS polygons (latest layer 0)
+      // Source: services2.arcgis.com/VofPZYDe2pLxSP5G ... FeatureServer/0
+      pspsUrl:
+        "https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query",
+    };
+
     const RATES = {
       solarRate: 3100,
       resiliencyEqRate: 1.0,
@@ -608,49 +525,41 @@
     const SELECTORS = {
       form: "#calcForm",
       result: "#result",
-      themeToggle: "#themeToggle",
-      btnReset: "#btnReset"
+      btnReset: "#btnReset",
+      addressInput: "#addressInput",
+      checkAddressBtn: "#checkAddressBtn",
+      clearAddressBtn: "#clearAddressBtn",
+      addressStatus: "#addressStatus",
+      inDAC: "#inDAC",
+      inFire: "#inFire",
+      inPSPS: "#inPSPS",
+      miniMap: "#miniMap"
     };
 
-    /* -------------------------
-       Helpers
-       ------------------------- */
     const qs = (sel, root = document) => root.querySelector(sel);
-    const qsa = (sel, root = document) => [...root.querySelectorAll(sel)];
     const money = n => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
     const number = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
-    function setTheme(mode) {
-      document.documentElement.setAttribute("data-theme", mode);
+    /* ---------- caching ---------- */
+    const ADDRESS_CACHE_KEY = "sgipAddressCache_v1";
+    function loadCache() {
       try {
-        localStorage.setItem("theme", mode);
-      } catch (_) {}
-    }
-
-    function initTheme() {
-      const saved = (() => {
-        try {
-          return localStorage.getItem("theme");
-        } catch {
-          return null;
-        }
-      })();
-
-      if (saved) {
-        setTheme(saved);
-        return;
+        return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {};
+      } catch {
+        return {};
       }
-      const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-      setTheme(prefersDark ? "dark" : "light");
     }
+    function saveCache(cache) {
+      try {
+        localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(cache));
+      } catch {}
+    }
+    const addressCache = loadCache();
 
-    /* -------------------------
-       Validation
-       ------------------------- */
+    /* ---------- validation ---------- */
     function validate(form) {
       let valid = true;
 
-      // Required: customerType
       const customerType = form.customerType;
       const customerTypeError = qs("#customerType-error");
       if (!customerType.value) {
@@ -662,7 +571,6 @@
         customerTypeError.textContent = "";
       }
 
-      // Required: capacity
       const capacity = parseFloat(form.capacity.value);
       const capacityError = qs("#capacity-error");
       if (isNaN(capacity) || capacity <= 0) {
@@ -673,13 +581,10 @@
         capacityError.hidden = true;
         capacityError.textContent = "";
       }
-
       return valid;
     }
 
-    /* -------------------------
-       Core calculation logic
-       ------------------------- */
+    /* ---------- calc ---------- */
     function calculate(data) {
       const {
         cust,
@@ -756,36 +661,183 @@
 
       explanation += `\n**Total SGIP incentives: $${money(totalIncentive)}.**`;
 
+      return { explanation };
+    }
+
+    /* ---------- ArcGIS helpers ---------- */
+    async function geocodeAddress(address) {
+      const params = new URLSearchParams({
+        SingleLine: address,
+        outFields: "Match_addr,Addr_type",
+        f: "json",
+      });
+
+      const url = `${CONFIG.geocodeUrl}?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Geocoding failed");
+      const json = await res.json();
+
+      const candidate = (json.candidates || [])[0];
+      if (!candidate) throw new Error("No match found");
       return {
-        budget,
-        rate,
-        capacity,
-        solarCap,
-        storageIncentive,
-        solarIncentive,
-        totalIncentive,
-        explanation
+        x: candidate.location.x,
+        y: candidate.location.y,
+        score: candidate.score,
+        matchAddress: candidate.address,
       };
     }
 
-    /* -------------------------
-       DOM glue
-       ------------------------- */
-    document.addEventListener("DOMContentLoaded", () => {
-      initTheme();
-
-      const form = qs(SELECTORS.form);
-      const resultEl = qs(SELECTORS.result);
-      const themeToggle = qs(SELECTORS.themeToggle);
-      const resetBtn = qs(SELECTORS.btnReset);
-
-      // Theme toggler
-      themeToggle.addEventListener("click", () => {
-        const current = document.documentElement.getAttribute("data-theme");
-        setTheme(current === "dark" ? "light" : "dark");
+    async function pointInLayer({ x, y }, layerQueryUrl) {
+      const params = new URLSearchParams({
+        f: "json",
+        geometry: JSON.stringify({ x, y, spatialReference: { wkid: 4326 } }),
+        geometryType: "esriGeometryPoint",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "*",
+        returnGeometry: "false",
       });
 
-      // Submit => calculate
+      const res = await fetch(`${layerQueryUrl}?${params.toString()}`);
+      if (!res.ok) throw new Error("Layer query failed");
+      const json = await res.json();
+      return (json.features || []).length > 0 ? json.features[0] : null;
+    }
+
+    async function pointInAnyLayer(point, urls) {
+      for (const url of urls) {
+        const f = await pointInLayer(point, url);
+        if (f) return f;
+      }
+      return null;
+    }
+
+    /* ---------- tiny map ---------- */
+    let miniMap;
+    let miniMarker;
+    function updateMiniMap(lat, lon) {
+      const el = qs(SELECTORS.miniMap);
+      el.classList.remove("hidden");
+
+      if (!miniMap) {
+        miniMap = L.map(el).setView([lat, lon], 14);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(miniMap);
+        miniMarker = L.marker([lat, lon]).addTo(miniMap);
+      } else {
+        miniMap.setView([lat, lon], 14);
+        if (miniMarker) {
+          miniMarker.setLatLng([lat, lon]);
+        } else {
+          miniMarker = L.marker([lat, lon]).addTo(miniMap);
+        }
+      }
+    }
+
+    function setAddressStatus(message, badges = []) {
+      const box = qs(SELECTORS.addressStatus);
+      box.innerHTML = `
+        ${badges.map(b => `<span class="badge">${b}</span>`).join(" ")}
+        ${message}
+      `;
+      box.classList.remove("hidden");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = qs(SELECTORS.form);
+      const resultEl = qs(SELECTORS.result);
+      const resetBtn = qs(SELECTORS.btnReset);
+
+      const addressInput = qs(SELECTORS.addressInput);
+      const checkBtn = qs(SELECTORS.checkAddressBtn);
+      const clearBtn = qs(SELECTORS.clearAddressBtn);
+      const statusBox = qs(SELECTORS.addressStatus);
+
+      const inDACSelect = qs(SELECTORS.inDAC);
+      const inFireSelect = qs(SELECTORS.inFire);
+      const inPSPSSelect = qs(SELECTORS.inPSPS);
+
+      checkBtn.addEventListener("click", async () => {
+        const raw = addressInput.value.trim();
+        if (!raw) {
+          setAddressStatus("Please enter an address first.");
+          return;
+        }
+        const address = raw.toLowerCase();
+
+        if (addressCache[address]) {
+          const c = addressCache[address];
+          setAddressStatus(
+            `[cached] DAC: ${c.dac ? "Yes" : "No"} • Fire Tier 2/3: ${c.fire ? "Yes" : "No"} • PSPS: ${c.psps ? "Yes" : "No"}. ` +
+            `(${c.lat.toFixed(5)}, ${c.lon.toFixed(5)})`,
+            [
+              c.dac ? "DAC" : "",
+              c.fire ? "Tier 2/3" : "",
+              c.psps ? "PSPS" : ""
+            ].filter(Boolean)
+          );
+          inDACSelect.value = c.dac ? "yes" : "no";
+          inFireSelect.value = c.fire ? "yes" : "no";
+          inPSPSSelect.value = c.psps ? "yes" : "no";
+          updateMiniMap(c.lat, c.lon);
+          return;
+        }
+
+        setAddressStatus("Geocoding and checking layers...");
+        try {
+          const point = await geocodeAddress(raw);
+          const lat = point.y;
+          const lon = point.x;
+
+          const [dacFeature, fireFeature, pspsFeature] = await Promise.all([
+            CONFIG.sb535Url ? pointInLayer(point, CONFIG.sb535Url) : null,
+            CONFIG.wildfireTierUrls?.length
+              ? pointInAnyLayer(point, CONFIG.wildfireTierUrls)
+              : null,
+            CONFIG.pspsUrl ? pointInLayer(point, CONFIG.pspsUrl) : null,
+          ]);
+
+          const dac = !!dacFeature;
+          const fire = !!fireFeature;
+          const psps = !!pspsFeature;
+
+          inDACSelect.value = dac ? "yes" : "no";
+          inFireSelect.value = fire ? "yes" : "no";
+          inPSPSSelect.value = psps ? "yes" : "no";
+
+          const badges = [];
+          if (dac) badges.push("DAC");
+          if (fire) badges.push("Tier 2/3");
+          if (psps) badges.push("PSPS");
+
+          setAddressStatus(
+            `Found coordinates: (${lat.toFixed(5)}, ${lon.toFixed(5)}). ` +
+            `DAC: ${dac ? "Yes" : "No"} • Fire Tier 2/3: ${fire ? "Yes" : "No"} • PSPS: ${psps ? "Yes" : "No"}.`,
+            badges
+          );
+
+          updateMiniMap(lat, lon);
+
+          addressCache[address] = { dac, fire, psps, lat, lon, ts: Date.now() };
+          saveCache(addressCache);
+        } catch (err) {
+          console.error(err);
+          setAddressStatus("Could not determine eligibility from address. Check console & layer URLs.");
+        }
+      });
+
+      clearBtn.addEventListener("click", () => {
+        addressInput.value = "";
+        statusBox.classList.add("hidden");
+        statusBox.innerHTML = "";
+        qs(SELECTORS.miniMap).classList.add("hidden");
+        inDACSelect.value = "";
+        inFireSelect.value = "";
+        inPSPSSelect.value = "";
+      });
+
       form.addEventListener("submit", e => {
         e.preventDefault();
 
@@ -814,19 +866,15 @@
           .replace(/\n/g, "<br />");
         resultEl.hidden = false;
 
-        // Scroll into view for mobile after calculation
         resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
       });
 
-      // Reset
       resetBtn.addEventListener("click", () => {
         form.reset();
         resultEl.hidden = true;
-        // restore defaults if needed
         form.capacity.value = "30.6";
       });
 
-      // Esc to clear
       document.addEventListener("keydown", e => {
         if (e.key === "Escape") {
           form.reset();
