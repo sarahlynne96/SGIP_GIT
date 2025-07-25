@@ -22,14 +22,17 @@
 
   <style>
     :root {
-      --color-primary: #fdb813;
-      --color-secondary: #003c71;
-      --color-accent: #005eb8;
-      --color-bg: #f9f9f9;
-      --color-surface: #fff;
+      /* -------- ORANGE LIGHT THEME -------- */
+      --color-primary: #ff7a00;          /* main CTA / highlights */
+      --color-secondary: #cc5a00;        /* section titles, labels */
+      --color-accent: #ff9f1c;           /* links, hovers, chips */
+      --focus-ring: 3px solid #ff7a00;   /* accessible orange focus */
+
+      --color-bg: #fdfbf8;
+      --color-surface: #ffffff;
       --color-text: #1f1f1f;
-      --color-text-muted: #555;
-      --color-border: #ddd;
+      --color-text-muted: #6b6b6b;
+      --color-border: #e6e2dc;
       --color-error: #c0392b;
 
       --fs-base: 1rem;
@@ -47,7 +50,6 @@
       --radius: 0.5rem;
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
       --transition: 160ms ease;
-      --focus-ring: 3px solid #2684ff;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -173,7 +175,7 @@
     }
     button:active { transform: translateY(1px); }
     .btn-primary { background: var(--color-primary); color: #000; }
-    .btn-primary:hover { background: var(--color-accent); color: #fff; }
+    .btn-primary:hover { background: var(--color-accent); color: #000; }
     .btn-secondary { background: transparent; border: 1px solid var(--color-border); color: inherit; }
     .btn-secondary:hover { background: var(--color-border); }
 
@@ -190,7 +192,7 @@
     }
 
     .address-check {
-      background: #fff;
+      background: var(--color-surface);
       border: 1px solid var(--color-border);
       border-radius: var(--radius);
       padding: var(--space-4);
@@ -203,7 +205,7 @@
       border: 1px dashed var(--color-border);
       border-radius: var(--radius);
       font-size: var(--fs-sm);
-      background: #fafafa;
+      background: #fff8f0;
     }
     .badge {
       display: inline-block;
@@ -213,7 +215,7 @@
       font-weight: 600;
       margin-right: 0.25rem;
       color: #000;
-      background: var(--color-primary);
+      background: var(--color-accent);
     }
 
     #miniMap {
@@ -487,26 +489,23 @@
 
   <script>
     /************************************************************
-     * CONFIG: Production ArcGIS endpoints
+     * CONFIG: Production ArcGIS endpoints (kept from previous build)
      ************************************************************/
     const CONFIG = {
       geocodeUrl:
         "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
 
       // SB 535 Disadvantaged Communities 2022 (Census Tracts & Tribal Areas) – layer 0
-      // Source: services1.arcgis.com/PCHfdHz4GlDNAhBb ... FeatureServer/0
       sb535Url:
         "https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query",
 
       // CPUC Fire Threat Areas – Tier 3 (0) & Tier 2 (1)
-      // Source: services.arcgis.com/BLN4oKB0N1YSgvY8 ... FeatureServer
       wildfireTierUrls: [
         "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query", // Tier 3
         "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query"  // Tier 2
       ],
 
-      // CPUC Consolidated PSPS polygons (latest layer 0)
-      // Source: services2.arcgis.com/VofPZYDe2pLxSP5G ... FeatureServer/0
+      // CPUC Consolidated PSPS polygons (layer 0)
       pspsUrl:
         "https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query",
     };
@@ -541,7 +540,7 @@
     const number = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
     /* ---------- caching ---------- */
-    const ADDRESS_CACHE_KEY = "sgipAddressCache_v1";
+    const ADDRESS_CACHE_KEY = "sgipAddressCache_v1_orange";
     function loadCache() {
       try {
         return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {};
