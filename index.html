@@ -1,92 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SGIP Residential Solar & Storage Equity Calculator</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
-<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
-<style>
-  :root{
-    --primary:#fdb813;      /* orange bar                      */
-    --secondary:#003c71;    /* CPUC navy                       */
-    --accent:#005eb8;       /* link / focus accent             */
-    --bg:#f5f5f5;
-    --surface:#ffffff;
-    --border:#e2e8f0;
-    --text:#222;
-    --muted:#555;
-    --radius:8px;
-    --shadow:0 2px 6px -2px rgba(0,0,0,.15);
-    --fs-sm:.875rem;
-    --fs-md:1rem;
-    --fs-lg:1.25rem;
-    --fs-xl:1.75rem;
-  }
-  *,*:before,*:after{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
-  a{color:var(--accent);text-decoration:none}
-  a:hover{text-decoration:underline}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SGIP Eligibility & Rebate Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f8fb;
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      padding: 2rem;
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      color: #005daa;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.3rem;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #005daa;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    button:hover {
+      background-color: #004a8d;
+    }
+    .hidden {
+      display: none;
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>California SGIP Eligibility & Rebate Calculator</h1>
+    <form id="sgipForm">
+      <div class="form-group">
+        <label for="customerType">Customer Type</label>
+        <select id="customerType" required>
+          <option value="">Select...</option>
+          <option value="residential">Residential</option>
+          <option value="commercial">Commercial</option>
+          <option value="nonprofit">Non-Profit</option>
+          <option value="medical">Medical Baseline</option>
+          <option value="DAC">Disadvantaged Community (DAC)</option>
+        </select>
+      </div>
 
-  /* ---------- HEADER ---------- */
-  header{
-    background:var(--primary);
-    padding:1.5rem 1rem;
-    box-shadow:var(--shadow);
-  }
-  header h1{
-    margin:0 auto;
-    max-width:1080px;
-    font-size:var(--fs-xl);
-    font-weight:700;
-    color:#000;
-    line-height:1.2;
-    text-align:center;
-  }
+      <div class="form-group">
+        <label for="techType">Technology Type</label>
+        <select id="techType" required>
+          <option value="">Select...</option>
+          <option value="battery">Battery Only</option>
+          <option value="solar_battery">Solar + Battery</option>
+          <option value="fuel_cell">Fuel Cell</option>
+        </select>
+      </div>
 
-  /* ---------- LAYOUT ---------- */
-  .container{
-    max-width:1080px;
-    margin:auto;
-    padding:1.5rem 1rem 3rem;
-    display:flex;
-    flex-direction:column;
-    gap:2rem;
-  }
-  .card{
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow);
-    padding:1.25rem 1.5rem;
-  }
-  h2.section{
-    margin:.25rem 0 1rem;
-    font-size:var(--fs-lg);
-    color:var(--secondary);
-  }
-  h3{margin:1rem 0 .75rem;font-size:var(--fs-md);color:var(--secondary)}
-  label{display:block;margin-bottom:.4rem;font-weight:600;color:var(--secondary)}
-  input,select{
-    width:100%;padding:.65rem .75rem;font-size:var(--fs-md);
-    border:1px solid var(--border);border-radius:6px;background:#fff;color:inherit;
-  }
-  input:focus,select:focus{border-color:var(--accent);outline:2px solid var(--accent);}
-  .help{font-size:var(--fs-sm);color:var(--muted);margin-top:.35rem}
-  .error{color:#c0392b;font-size:var(--fs-sm);margin-top:.35rem}
+      <div class="form-group">
+        <label for="systemSize">Storage System Size (kWh)</label>
+        <input type="number" id="systemSize" min="0" step="0.1" required />
+      </div>
 
-  .actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
-  button{
-    border:none;border-radius:6px;cursor:pointer;min-height:42px;
-    padding:.6rem 1rem;font-size:var(--fs-md);transition:filter .15s;
-  }
-  .primary{background:var(--primary);color:#000}
-  .primary:hover{filter:brightness(1.05)}
-  .secondary{background:#fff;border:1px solid var(--border)}
-  .secondary:hover{background:#f1f5f9}
+      <div class="form-group">
+        <label for="inverterSize">Inverter Capacity (kW)</label>
+        <input type="number" id="inverterSize" min="0" step="0.1" />
+      </div>
 
-  table.budget{
-    width:100%;border-collapse:collapse;margin:1rem 0 .75rem
-  }
-  table.budget th,table.budget td{
-    border:1px solid var(--border);
+      <div class="form-group">
+        <label for="address">Project Address</label>
+        <input type="text" id="address" placeholder="123 Main St, City, CA ZIP" required />
+      </div>
+
+      <div class="form-group">
+        <label for="incomeLevel">Household Income Level</label>
+        <select id="incomeLevel">
+          <option value="">Select...</option>
+          <option value="low">Low Income</option>
+          <option value="moderate">Moderate Income</option>
+          <option value="high">High Income</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="utility">Utility Provider</label>
+        <select id="utility" required>
+          <option value="">Select...</option>
+          <option value="pge">PG&E</option>
+          <option value="sce">SCE</option>
+          <option value="sdge">SDG&E</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="rateSchedule">Rate Schedule (if known)</label>
+        <input type="text" id="rateSchedule" placeholder="e.g., TOU-D-PRIME" />
+      </div>
+
+      <button type="submit">Calculate Eligibility</button>
+    </form>
+
+    <section id="results" class="hidden">
+      <h2>Results</h2>
+      <p id="eligibility"></p>
+      <p id="incentiveLevel"></p>
+      <p id="estimatedRebate"></p>
+    </section>
+  </main>
+
+  <script>
+    document.getElementById('sgipForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const systemSize = parseFloat(document.getElementById('systemSize').value);
+      const income = document.getElementById('incomeLevel').value;
+      const customerType = document.getElementById('customerType').value;
+      const techType = document.getElementById('techType').value;
+
+      // Mock location mapping logic
+      const isDAC = customerType === 'DAC';
+      const isMedical = customerType === 'medical';
+      const isLowIncome = income === 'low';
+
+      // Determine eligibility pathway and incentive level
+      let path = 'General Market';
+      let incentive = 0.15; // $/Wh
+
+      if (isLowIncome) {
+        path = 'Equity';
+        incentive = 0.85;
+      }
+      if (isDAC || isMedical) {
+        path = 'Equity Resiliency';
+        incentive = 1.00;
+      }
+
+      // Calculate total rebate
+      const totalRebate = systemSize * 1000 * incentive;
+
+      // Display results
+      document.getElementById('eligibility').textContent = `Eligibility Pathway: ${path}`;
+      document.getElementById('incentiveLevel').textContent = `Incentive Level: $${incentive.toFixed(2)} per Wh`;
+      document.getElementById('estimatedRebate').textContent = `Estimated Total Rebate: $${totalRebate.toLocaleString()}`;
+      document.getElementById('results').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
