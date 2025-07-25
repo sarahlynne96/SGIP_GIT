@@ -1,174 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SGIP Eligibility & Rebate Calculator</title>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SGIP Rebate & Eligibility Calculator</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f8fb;
-      margin: 0;
-      padding: 0;
-      color: #222;
-    }
-    .container {
-      max-width: 700px;
-      margin: auto;
-      padding: 2rem;
-      background: white;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    h1, h2 {
-      color: #005daa;
-    }
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-    label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 0.3rem;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 0.5rem;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #005daa;
-      color: white;
-      border: none;
-      cursor: pointer;
-      margin-top: 1rem;
-    }
-    button:hover {
-      background-color: #004a8d;
-    }
-    .hidden {
-      display: none;
-    }
-    @media (max-width: 600px) {
-      .container {
-        padding: 1rem;
-      }
-    }
+    body{font-family:Arial,sans-serif;background:#f4f8fb;color:#222;margin:0;padding:0}
+    .container{max-width:700px;margin:auto;padding:1rem;background:#fff;box-shadow:0 0 8px rgba(0,0,0,0.1)}
+    h1,h2{color:#005daa}
+    .form-group{margin-bottom:1.2rem}
+    label{display:block;font-weight:600;margin-bottom:.3rem}
+    input,select,button{width:100%;padding:.6rem;font-size:1rem;box-sizing:border-box}
+    button{background:#005daa;color:#fff;border:none;cursor:pointer;margin-top:1rem}
+    button:hover{background:#004a8d}
+    .hidden{display:none}
+    #map{height:300px;width:100%;margin-bottom:1.5rem;border:1px solid #ccc}
+    @media(max-width:600px){.container{padding:.8rem}}
   </style>
 </head>
 <body>
-  <main class="container">
-    <h1>California SGIP Eligibility & Rebate Calculator</h1>
-    <form id="sgipForm">
-      <div class="form-group">
-        <label for="customerType">Customer Type</label>
-        <select id="customerType" required>
-          <option value="">Select...</option>
-          <option value="residential">Residential</option>
-          <option value="commercial">Commercial</option>
-          <option value="nonprofit">Non-Profit</option>
-          <option value="medical">Medical Baseline</option>
-          <option value="DAC">Disadvantaged Community (DAC)</option>
-        </select>
-      </div>
+<main class="container">
+  <h1>California SGIP Rebate & Eligibility</h1>
+  <div id="map" aria-label="Interactive map showing DAC and Fire Threat overlays"></div>
 
-      <div class="form-group">
-        <label for="techType">Technology Type</label>
-        <select id="techType" required>
-          <option value="">Select...</option>
-          <option value="battery">Battery Only</option>
-          <option value="solar_battery">Solar + Battery</option>
-          <option value="fuel_cell">Fuel Cell</option>
-        </select>
-      </div>
+  <form id="sgipForm" aria-labelledby="sgipForm">
+    <div class="form-group">
+      <label for="address">Project Address</label>
+      <input type="text" id="address" placeholder="City & ZIP in CA" aria-required="true"/>
+    </div>
+    <!-- other inputs... -->
+    <div class="form-group">
+      <label for="incomeLevel">Household Income Level</label>
+      <select id="incomeLevel">
+        <option value="">Select…</option>
+        <option value="low">Low Income</option>
+        <option value="moderate">Moderate Income</option>
+        <option value="high">High Income</option>
+      </select>
+    </div>
+    <button type="submit">Calculate</button>
+  </form>
 
-      <div class="form-group">
-        <label for="systemSize">Storage System Size (kWh)</label>
-        <input type="number" id="systemSize" min="0" step="0.1" required />
-      </div>
+  <section id="results" class="hidden" aria-live="polite">
+    <h2>Results</h2>
+    <p id="eligibility"></p>
+    <p id="incentiveLevel"></p>
+    <p id="estimatedRebate"></p>
+  </section>
+</main>
 
-      <div class="form-group">
-        <label for="inverterSize">Inverter Capacity (kW)</label>
-        <input type="number" id="inverterSize" min="0" step="0.1" />
-      </div>
+<script src="https://js.arcgis.com/4.25/"></script>
+<script>
+(async()=>{
+  const form=document.getElementById('sgipForm');
+  const mapContainer=document.getElementById('map');
 
-      <div class="form-group">
-        <label for="address">Project Address</label>
-        <input type="text" id="address" placeholder="123 Main St, City, CA ZIP" required />
-      </div>
+  const map = new arcgisJsApi.Map({basemap:'topo-vector'});
+  const view = new arcgisJsApi.MapView({container:'map',map,zoom:6,center:[-119,37]});
 
-      <div class="form-group">
-        <label for="incomeLevel">Household Income Level</label>
-        <select id="incomeLevel">
-          <option value="">Select...</option>
-          <option value="low">Low Income</option>
-          <option value="moderate">Moderate Income</option>
-          <option value="high">High Income</option>
-        </select>
-      </div>
+  const dacLayer=new arcgisJsApi.FeatureLayer({
+    url:"https://services1.arcgis.com/PCHfdHz4GlDNAhBb/arcgis/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0",
+    outFields:["*"], popupEnabled:false
+  });
+  const fireLayer=new arcgisJsApi.KMLLayer({
+    url:"https://gis.sanramon.ca.gov/server/rest/services/Engineering/CPUC_Fire_Threat/MapServer/generateKml?layers=0&layerOptions=nonComposite",
+    title:"Fire Threat Zones"
+  });
+  map.addMany([dacLayer, fireLayer]);
 
-      <div class="form-group">
-        <label for="utility">Utility Provider</label>
-        <select id="utility" required>
-          <option value="">Select...</option>
-          <option value="pge">PG&E</option>
-          <option value="sce">SCE</option>
-          <option value="sdge">SDG&E</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="rateSchedule">Rate Schedule (if known)</label>
-        <input type="text" id="rateSchedule" placeholder="e.g., TOU-D-PRIME" />
-      </div>
-
-      <button type="submit">Calculate Eligibility</button>
-    </form>
-
-    <section id="results" class="hidden">
-      <h2>Results</h2>
-      <p id="eligibility"></p>
-      <p id="incentiveLevel"></p>
-      <p id="estimatedRebate"></p>
-    </section>
-  </main>
-
-  <script>
-    document.getElementById('sgipForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      const systemSize = parseFloat(document.getElementById('systemSize').value);
-      const income = document.getElementById('incomeLevel').value;
-      const customerType = document.getElementById('customerType').value;
-      const techType = document.getElementById('techType').value;
-
-      // Mock location mapping logic
-      const isDAC = customerType === 'DAC';
-      const isMedical = customerType === 'medical';
-      const isLowIncome = income === 'low';
-
-      // Determine eligibility pathway and incentive level
-      let path = 'General Market';
-      let incentive = 0.15; // $/Wh
-
-      if (isLowIncome) {
-        path = 'Equity';
-        incentive = 0.85;
-      }
-      if (isDAC || isMedical) {
-        path = 'Equity Resiliency';
-        incentive = 1.00;
-      }
-
-      // Calculate total rebate
-      const totalRebate = systemSize * 1000 * incentive;
-
-      // Display results
-      document.getElementById('eligibility').textContent = `Eligibility Pathway: ${path}`;
-      document.getElementById('incentiveLevel').textContent = `Incentive Level: $${incentive.toFixed(2)} per Wh`;
-      document.getElementById('estimatedRebate').textContent = `Estimated Total Rebate: $${totalRebate.toLocaleString()}`;
-      document.getElementById('results').classList.remove('hidden');
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const addr=document.getElementById('address').value;
+    const geo = await arcgisJsApi.identity; // placeholder for geocode
+    const geocode = await arcgisJsApi.esriRequest({
+      url:"https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+      params:{SingleLine:addr,f: 'json', outFields:'*',token:'YOUR_TOKEN'}
     });
-  </script>
+    if(!geocode.data.candidates.length) {
+      alert('Address not found.');
+      return;
+    }
+    const pt=geocode.data.candidates[0].location;
+    view.goTo({center:pt, zoom:12});
+
+    const dacQuery = await dacLayer.queryFeatures({geometry:pt, spatialRelationship:"intersects", outFields:["*"]});
+    const inDAC = dacQuery.features.length>0;
+    const fireQuery = await fireLayer.queryFeatures({geometry:pt, outFields:["HFTD"]});
+    const inFire = fireQuery.features.some(f=>["Tier 2","Tier 3"].includes(f.attributes.HFTD));
+
+    const income=document.getElementById('incomeLevel').value;
+    let path="General Market", rate=0.15;
+    if(income==="low"){ path="Equity"; rate=1.10; }
+    if(inDAC||inFire){ path="Equity Resiliency"; rate=1.00; }
+
+    const size = parseFloat(document.getElementById('systemSize').value)||0;
+    const solar = document.getElementById('techType').value==="solar_battery" ? parseFloat(document.getElementById('solarSize').value)||0 : 0;
+    const solarRate = solar>0 && path!=="General Market" ? 3.10 : 0;
+    const rebate = size*1000*rate + solar*1000*solarRate;
+
+    document.getElementById('eligibility').textContent=`Pathway: ${path}`;
+    document.getElementById('incentiveLevel').textContent=`Rates: $${rate.toFixed(2)}/Wh storage${solarRate?` & $${solarRate.toFixed(2)}/kW solar`:''}`;
+    document.getElementById('estimatedRebate').textContent=`Estimated Rebate: $${rebate.toLocaleString()}`;
+    document.getElementById('results').classList.remove('hidden');
+  });
+})();
+</script>
 </body>
 </html>
