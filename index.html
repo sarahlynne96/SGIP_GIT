@@ -1,90 +1,226 @@
-<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script>
-    const form = document.getElementById('calc-form');
-    const results = document.getElementById('results-summary');
-    const programPill = document.getElementById('program-pill');
-    const statusPill = document.getElementById('status-pill');
-    const totalPill = document.getElementById('total-pill');
-    const storageResult = document.getElementById('storage-result');
-    const solarResult = document.getElementById('solar-result');
-    const eligibilityDetails = document.getElementById('eligibility-details');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGIP Eligibility & Incentive Calculator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9fafb;
+      color: #111;
+    }
+    header {
+      background: #fdb813;
+      color: #000;
+      padding: 1rem;
+      font-size: 1.75rem;
+      font-weight: bold;
+      text-align: center;
+    }
+    main {
+      max-width: 960px;
+      margin: auto;
+      padding: 1rem;
+    }
+    section {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.18);
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+    }
+    label {
+      display: block;
+      margin-top: 0.75rem;
+      font-weight: 600;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+    }
+    button {
+      background: #fdb813;
+      color: #000;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      margin-top: 1rem;
+      cursor: pointer;
+      min-height: 44px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      margin-top: 0.5rem;
+      border-radius: 999px;
+      font-size: 0.875rem;
+    }
+    .pill.eligible { background: #28a745; color: #fff; }
+    .pill.ineligible { background: #dc3545; color: #fff; }
+    .error { color: red; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <header>SGIP Eligibility & Incentive Calculator</header>
+  <main>
+    <section>
+      <form id="calc-form">
+        <label for="address">Address</label>
+        <input id="address" required />
 
-    // Live SGIP Incentive Rates as of 7/25/2025
-    const incentiveRates = {
-      equityResiliency: 1.00,
-      residentialEquity: 1.10,
-      smallRes: 0.15,
-      largeScale: 0.25,
-      generation: 2.00,
-      solarAdder: 3.10
+        <label for="zip">ZIP Code</label>
+        <input id="zip" required />
+
+        <label for="income">Household Income ($)</label>
+        <input id="income" type="number" required />
+
+        <label for="kwh">Battery Size (kWh)</label>
+        <input id="kwh" type="number" step="0.1" required />
+
+        <label for="kw">Solar Size (kW)</label>
+        <input id="kw" type="number" step="0.1" />
+
+        <label for="utility">Utility</label>
+        <select id="utility" required>
+          <option value="">Select</option>
+          <option value="PGE">PG&E</option>
+          <option value="SCE">SCE</option>
+          <option value="SCG">SCG</option>
+          <option value="CSE">CSE (SDG&E)</option>
+        </select>
+
+        <button type="submit">Check Eligibility</button>
+      </form>
+    </section>
+
+    <section>
+      <div id="storage-result">Storage Incentive: —</div>
+      <div id="solar-result">Solar Incentive: —</div>
+      <div class="pill" id="total-pill">Total: —</div>
+      <div class="pill" id="program-pill">Program: —</div>
+      <div class="pill" id="status-pill">Status: —</div>
+      <div id="eligibility-details"></div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    const arcgisFind = async (address) => {
+      const res = await fetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${encodeURIComponent(address)}&f=json`);
+      const json = await res.json();
+      const loc = json?.candidates?.[0]?.location;
+      if (!loc) throw new Error('Address not found');
+      return loc;
     };
 
-    function determineProgram({ income, zip, kwh, kw, utility, dac, fire, psps }) {
+    const checkArcGISLayer = async (lat, lon, url) => {
+      const query = `${url}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&returnCountOnly=true&f=json`;
+      const res = await fetch(query);
+      const json = await res.json();
+      return json?.count > 0;
+    };
+
+    const checkAllLayers = async (lat, lon) => {
+      const dacURL = 'https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query';
+      const fire2URL = 'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query';
+      const fire3URL = 'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query';
+      const pspsURL = 'https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query';
+
+      const [dac, fire2, fire3, psps] = await Promise.all([
+        checkArcGISLayer(lat, lon, dacURL),
+        checkArcGISLayer(lat, lon, fire2URL),
+        checkArcGISLayer(lat, lon, fire3URL),
+        checkArcGISLayer(lat, lon, pspsURL)
+      ]);
+
+      return {
+        dac,
+        fire: fire2 || fire3,
+        psps
+      };
+    };
+
+    const determineProgram = ({ income, kwh, kw, utility, dac, fire, psps }) => {
+      const rates = {
+        equityResiliency: 1.00,
+        residentialEquity: 1.10,
+        smallRes: 0.15,
+        largeScale: 0.25,
+        generation: 2.00,
+        solarAdder: 3.10
+      };
+
       let reason = [];
-
-      const qualifiesDAC = dac;
-      const qualifiesPSPS = psps;
-      const qualifiesFire = fire;
-      const isLowIncome = income && income < 80000; // Simplified AMI check
-
-      if (qualifiesPSPS || qualifiesFire) reason.push('Fire/PSPS area');
-      if (qualifiesDAC) reason.push('Disadvantaged Community');
+      const isLowIncome = income && income < 80000;
+      if (fire || psps) reason.push('Fire/PSPS');
+      if (dac) reason.push('DAC');
       if (isLowIncome) reason.push('Low Income');
 
-      if ((qualifiesFire || qualifiesPSPS) && isLowIncome) {
-        return { program: 'Equity Resiliency', rate: incentiveRates.equityResiliency, reason: reason.join(', ') };
-      } else if (isLowIncome && qualifiesDAC) {
-        return { program: 'Residential Storage Equity', rate: incentiveRates.residentialEquity, reason: reason.join(', ') };
-      } else if (utility && ['PGE', 'SCE', 'SCG', 'CSE'].includes(utility)) {
-        if (kwh <= 30) {
-          return { program: 'Small Residential Storage', rate: incentiveRates.smallRes, reason: 'Standard residential customer' };
-        } else {
-          return { program: 'Large-Scale Storage', rate: incentiveRates.largeScale, reason: 'High-capacity system' };
-        }
-      } else {
-        return { program: 'General Market (Ineligible)', rate: 0, reason: 'Outside IOU territory or missing criteria' };
+      if ((fire || psps) && isLowIncome) return { program: 'Equity Resiliency', rate: rates.equityResiliency, reason: reason.join(', ') };
+      if (isLowIncome && dac) return { program: 'Residential Storage Equity', rate: rates.residentialEquity, reason: reason.join(', ') };
+      if (utility && ['PGE','SCE','SCG','CSE'].includes(utility)) {
+        if (kwh <= 30) return { program: 'Small Residential Storage', rate: rates.smallRes, reason: 'Standard residential customer' };
+        return { program: 'Large-Scale Storage', rate: rates.largeScale, reason: 'Large system' };
+      }
+      return { program: 'General Market (Ineligible)', rate: 0, reason: 'Outside IOU territory or missing criteria' };
+    };
+
+    async function fetchAMI(zip) {
+      try {
+        const res = await fetch(`https://www.huduser.gov/hudapi/public/il/v2/zip/${zip}?year=2024`, {
+          headers: { 'Accept': 'application/json', 'apikey': 'REPLACE_WITH_KEY' }
+        });
+        const json = await res.json();
+        const median = json?.IncomeLimits?.[0]?.MedianFamilyIncome;
+        return median || null;
+      } catch {
+        return null;
       }
     }
 
-    form.addEventListener('submit', async (e) => {
+    document.getElementById('calc-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-
       const address = document.getElementById('address').value;
       const zip = document.getElementById('zip').value;
-      const income = parseFloat(document.getElementById('income').value);
+      const incomeInput = document.getElementById('income');
+      const income = parseFloat(incomeInput.value);
+      const medianIncome = await fetchAMI(zip);
+      if (medianIncome && !isNaN(income)) {
+        const amiPct = Math.round(income / medianIncome * 100);
+        incomeInput.setAttribute('aria-description', `~${amiPct}% AMI`);
+      }
       const kwh = parseFloat(document.getElementById('kwh').value);
       const kw = parseFloat(document.getElementById('kw').value || '0');
       const utility = document.getElementById('utility').value;
 
-      // Placeholder eligibility logic (simulate ArcGIS results)
-      const simulatedLayers = {
-        dac: Math.random() > 0.5,
-        fire: Math.random() > 0.5,
-        psps: Math.random() > 0.5
-      };
+      try {
+        const { x: lon, y: lat } = await arcgisFind(address);
+        const layers = await checkAllLayers(lat, lon);
 
-      const program = determineProgram({
-        income,
-        zip,
-        kwh,
-        kw,
-        utility,
-        ...simulatedLayers
-      });
+        const program = determineProgram({ income, kwh, kw, utility, ...layers });
+        const storageIncentive = kwh * 1000 * program.rate;
+        const solarIncentive = kw * 3100;
+        const total = storageIncentive + solarIncentive;
 
-      const storageIncentive = kwh * 1000 * program.rate;
-      const solarIncentive = kw * incentiveRates.solarAdder * 1000;
-      const total = storageIncentive + solarIncentive;
-
-      storageResult.textContent = `Storage Incentive: $${storageIncentive.toLocaleString()}`;
-      solarResult.textContent = `Solar Incentive: $${solarIncentive.toLocaleString()}`;
-      totalPill.textContent = `Total: $${total.toLocaleString()}`;
-
-      programPill.textContent = `Program: ${program.program}`;
-      statusPill.textContent = program.rate > 0 ? 'Status: Eligible' : 'Status: Ineligible';
-      statusPill.className = `pill ${program.rate > 0 ? 'eligible' : 'ineligible'}`;
-
-      eligibilityDetails.innerHTML = `<p><strong>Reason:</strong> ${program.reason}</p>`;
+        document.getElementById('storage-result').textContent = `Storage Incentive: $${storageIncentive.toLocaleString()}`;
+        document.getElementById('solar-result').textContent = `Solar Incentive: $${solarIncentive.toLocaleString()}`;
+        document.getElementById('total-pill').textContent = `Total: $${total.toLocaleString()}`;
+        document.getElementById('program-pill').textContent = `Program: ${program.program}`;
+        const statusPill = document.getElementById('status-pill');
+        statusPill.textContent = program.rate > 0 ? 'Status: Eligible' : 'Status: Ineligible';
+        statusPill.className = `pill ${program.rate > 0 ? 'eligible' : 'ineligible'}`;
+        document.getElementById('eligibility-details').innerHTML = `<p><strong>Reason:</strong> ${program.reason}</p>`;
+      } catch (err) {
+        document.getElementById('eligibility-details').innerHTML = `<p class="error">Address or layer lookup failed: ${err.message}</p>`;
+      }
     });
   </script>
 </body>
