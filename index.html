@@ -1,272 +1,393 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SGIP Residential Solar &amp; Storage Equity Calculator</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGIP Incentive Calculator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <style>
+    :root {
+      --primary: #fdb813;
+      --navy: #003c71;
+      --accent: #005eb8;
+      --border: #e2e8f0;
+      --bg-card: #fff;
+      --shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.18);
+      --radius: 8px;
+      --font-sm: 0.875rem;
+      --font-base: 1rem;
+      --font-lg: 1.25rem;
+      --font-xl: 1.75rem;
+    }
 
-<!-- Leaflet (mini-map) -->
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      crossorigin>
-<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f9fafb;
+      color: #111;
+      font-size: var(--font-base);
+    }
 
-<style>
-/* --- CPUC Fact-Sheet palette & clean card look --- */
-:root{
-  --primary:#fdb813;          /* orange bar / buttons             */
-  --secondary:#003c71;        /* navy headings                     */
-  --accent:#005eb8;           /* link & focus ring                 */
-  --bg:#f7f7f7;
-  --surface:#ffffff;
-  --border:#e2e8f0;
-  --text:#222;
-  --muted:#555;
-  --error:#c53030;
-  --radius:8px;
-  --shadow:0 2px 6px -2px rgb(0 0 0 / .18);
+    header {
+      background: var(--primary);
+      color: #000;
+      padding: 1rem;
+      font-size: var(--font-xl);
+      text-align: center;
+      font-weight: bold;
+    }
 
-  --fs-sm:.875rem;
-  --fs-base:1rem;
-  --fs-lg:1.25rem;
-  --fs-xl:1.75rem;
-}
-*,*::before,*::after{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    main {
+      max-width: 960px;
+      margin: auto;
+      padding: 1rem;
+    }
 
-/* Header */
-header{background:var(--primary);padding:1.5rem 1rem;box-shadow:var(--shadow)}
-header h1{margin:0 auto;max-width:1080px;text-align:center;font-size:var(--fs-xl);font-weight:700;color:#000;line-height:1.2}
+    section.card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
 
-/* Layout */
-.container{max-width:1080px;margin:auto;padding:2rem 1rem 3.5rem;display:flex;flex-direction:column;gap:2.25rem}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.5rem 1.75rem}
-h2.section{margin:.3rem 0 1.2rem;font-size:var(--fs-lg);color:var(--secondary)}
-h3{margin:1.1rem 0 .7rem;color:var(--secondary);font-size:var(--fs-base);font-weight:600}
-label{display:block;margin-bottom:.4rem;color:var(--secondary);font-weight:600}
-input,select{width:100%;padding:.65rem .75rem;font-size:var(--fs-base);border:1px solid var(--border);border-radius:6px;background:#fff;color:inherit}
-input:focus,select:focus{border-color:var(--accent);outline:2px solid var(--accent)}
-.help{font-size:var(--fs-sm);color:var(--muted);margin-top:.35rem}
-.error{color:var(--error);font-size:var(--fs-sm);margin-top:.35rem}
-.actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.2rem}
-button{cursor:pointer;border:none;border-radius:6px;min-height:44px;padding:.65rem 1rem;font-size:var(--fs-base);transition:filter .15s}
-.primary{background:var(--primary);color:#000}.primary:hover{filter:brightness(1.07)}
-.secondary{background:#fff;border:1px solid var(--border)}.secondary:hover{background:#f1f5f9}
-.badge{display:inline-block;padding:.15rem .55rem;border-radius:9999px;background:var(--primary);font-size:.75rem;font-weight:600;margin-right:.25rem}
-.pill{display:inline-block;border-radius:9999px;padding:.18rem .55rem;font-size:.75rem;font-weight:700;color:#fff}
-.open{background:#16a34a}.pending{background:#f59e0b;color:#000}.closed{background:#dc2626}
-table.budget{width:100%;border-collapse:collapse;margin:1rem 0 .75rem}
-table.budget th,table.budget td{border:1px solid var(--border);padding:.5rem .6rem;font-size:var(--fs-sm);text-align:left}
-table.budget thead{background:var(--secondary);color:#fff}
-#result{white-space:pre-line;border-left:5px solid var(--primary);padding-left:1rem;line-height:1.55}
-.total-pill{display:inline-block;background:var(--secondary);color:#fff;padding:.28rem .85rem;border-radius:9999px;font-weight:700;font-size:.8rem;margin-top:.5rem}
-#miniMap{height:240px;border:1px solid var(--border);border-radius:6px;margin-top:.6rem}
-.address-status{white-space:pre-line;background:#fffdf7;border:1px dashed var(--border);padding:.55rem .7rem;border-radius:6px;margin-top:.7rem;font-size:.9rem}
-.warn{border-left:4px solid var(--primary);background:#fff8e6;padding:.7rem 1rem;border-radius:6px;color:#b45309;font-weight:600;margin-bottom:1rem}
-.hidden{display:none!important}
-@media(min-width:768px){header h1{font-size:2rem}}
-</style>
+    h2 {
+      color: var(--navy);
+      font-size: var(--font-lg);
+    }
+
+    label {
+      display: block;
+      margin: 0.75rem 0 0.25rem;
+      font-weight: 600;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: var(--font-base);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid var(--accent);
+    }
+
+    .button-group {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      min-height: 44px;
+      padding: 0 1rem;
+      font-size: var(--font-base);
+      border-radius: 4px;
+      border: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: #000;
+      border-color: var(--primary);
+    }
+
+    button.secondary {
+      background: #fff;
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    button:focus {
+      outline: 2px solid var(--accent);
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: var(--navy);
+      color: #fff;
+      border-radius: 999px;
+      font-size: var(--font-sm);
+      margin: 0.25rem 0;
+    }
+
+    .pill.pending {
+      background: #ccc;
+      color: #000;
+    }
+
+    .error {
+      color: red;
+      font-size: var(--font-sm);
+    }
+
+    #map {
+      height: 300px;
+      margin-top: 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    @media (min-width: 768px) {
+      .button-group {
+        justify-content: flex-start;
+      }
+    }
+  </style>
 </head>
-
 <body>
-<header><h1>SGIP Residential Solar &amp; Storage Equity Calculator</h1></header>
+  <header>SGIP Eligibility & Incentive Calculator</header>
+  <main>
+    <section class="card" id="form-section">
+      <h2>Eligibility & Incentive Form</h2>
+      <form id="calc-form">
+        <label for="address">Service Address</label>
+        <input type="text" id="address" name="address" required />
 
-<main class="container">
+        <label for="zip">ZIP Code</label>
+        <input type="text" id="zip" name="zip" maxlength="5" />
 
-<!-- === CALCULATOR CARD === -->
-<section class="card">
-  <h2 class="section">Estimate your incentive</h2>
+        <label for="income">Household Income</label>
+        <input type="number" id="income" name="income" />
 
-  <div id="waitBanner" class="warn hidden">⚠️ IOU territories may wait-list once funds are fully subscribed.</div>
+        <label for="customer-class">Customer Class *</label>
+        <select id="customer-class" required>
+          <option value="">Select</option>
+          <option value="residential">Residential</option>
+          <option value="small-business">Small Business</option>
+        </select>
+        <div class="error" id="customer-error"></div>
 
-  <!-- Live budget table -->
-  <h3>Statewide budget (updates nightly)</h3>
-  <table id="budgetTbl" class="budget">
-    <thead><tr><th>Bucket</th><th>Total $</th></tr></thead>
-    <tbody>
-      <tr><td>RSSE – Ratepayer</td><td id="bucketRatepayer">—</td></tr>
-      <tr><td>RSSE – AB 209</td><td id="bucketAB209">—</td></tr>
-      <tr><td>Small-Residential Storage</td><td id="bucketSmallRes">—</td></tr>
-    </tbody>
-  </table>
-  <p class="help">Totals come from the SGIP Program-Metrics dashboard (auto-refreshed).</p>
+        <label for="kwh">Battery Capacity (kWh) *</label>
+        <input type="number" id="kwh" required />
+        <div class="error" id="kwh-error"></div>
 
-  <!-- Address checker -->
-  <div class="card" style="margin-top:1.4rem">
-    <h3>Quick address check (DAC / Fire / PSPS / Utility)</h3>
-    <div class="form-field"><label for="addr">Address</label><input id="addr" placeholder="123 Main St, City CA"></div>
-    <div class="actions"><button class="primary" type="button" id="addrBtn">Check</button><button class="secondary" type="button" id="addrClr">Clear</button></div>
-    <div id="addrStatus" class="address-status hidden"></div>
-    <div id="miniMap" class="hidden"></div>
-  </div>
+        <label for="kw">Solar Size (kW)</label>
+        <input type="number" id="kw" />
 
-  <!-- HUD -->
-  <div class="card">
-    <h3>Income auto-fill (HUD)</h3>
-    <div class="form-field"><label for="zip">ZIP Code</label><input id="zip" inputmode="numeric" pattern="\\d{5}"></div>
-    <div class="form-field"><label for="income">Annual household income $</label><input id="income" type="number" min="0" step="100"></div>
-    <div class="actions"><button class="primary" type="button" id="hudBtn">Fetch AMI %</button></div>
-    <div id="hudMsg" class="help"></div>
-  </div>
+        <label for="utility">Utility</label>
+        <select id="utility">
+          <option value="">Select</option>
+          <option value="PGE">PG&E</option>
+          <option value="SCE">SCE</option>
+          <option value="SDGE">SDG&E</option>
+          <option value="SCG">SoCalGas</option>
+        </select>
 
-  <!-- Utility -->
-  <div class="form-field" style="margin-top:1.4rem">
-    <label for="util">Utility territory</label>
-    <select id="util">
-      <option value="">Select / auto-detect</option>
-      <option value="PGE">PG&amp;E</option><option value="SCE">SCE</option>
-      <option value="SDGE">SDG&amp;E</option><option value="SCG">SoCalGas</option>
-      <option value="LADWP">LADWP</option><option value="OTHER">Other</option>
-    </select>
-    <div class="help" style="margin-top:.4rem">Status: <span id="utilPill" class="pill pending">Pending</span> <span id="utilTxt"></span></div>
-  </div>
+        <div class="button-group">
+          <button type="submit" class="primary">Calculate Incentives</button>
+          <button type="button" class="secondary" id="export-pdf">Export PDF</button>
+        </div>
+        <div role="status" aria-live="polite" id="status-pill" class="pill pending">Status: Not calculated</div>
+      </form>
+    </section>
 
-  <!-- Calculator form -->
-  <form id="calcForm" novalidate>
-    <div class="form-field"><label for="cust">Customer class</label>
-      <select id="cust" required><option value=""></option><option value="residential-single">Residential Single-Family</option><option value="residential-multi">Residential Multifamily</option></select>
-      <div id="custErr" class="error hidden"></div></div>
-    <div class="form-field"><label for="kwh">Storage capacity (kWh)</label>
-      <input id="kwh" type="number" min="0" step="0.1" value="15"><div id="kwhErr" class="error hidden"></div></div>
-    <div class="form-field"><label for="kw">Solar PV size (kW)</label><input id="kw" type="number" min="0" step="0.1" value="5"></div>
-    <div class="form-field"><label for="ami">Income as % AMI</label><input id="ami" type="number" min="0" max="300" step=".1"></div>
+    <section class="card" id="results-section">
+      <h2>Results</h2>
+      <div>Storage Incentive: <strong id="storage-result">—</strong></div>
+      <div>Solar Incentive: <strong id="solar-result">—</strong></div>
+      <div class="pill" id="total-pill">Total: —</div>
+      <div id="badges">
+        <div class="pill" id="dac-pill">DAC: —</div>
+        <div class="pill" id="fire-pill">Fire Zone: —</div>
+        <div class="pill" id="psps-pill">PSPS: —</div>
+        <div class="pill" id="ami-pill">AMI: —</div>
+      </div>
+    </section>
 
-    <div class="actions">
-      <button class="primary" type="submit" id="calcBtn" disabled>Calculate</button>
-      <button class="secondary" type="button" id="pdfBtn" disabled>Export PDF</button>
-      <button class="secondary" type="reset">Clear</button>
-    </div>
-  </form>
+    <section class="card" id="budget-section">
+      <h2>Statewide SGIP Budgets</h2>
+      <div>RSSE – Ratepayer: <span id="ratepayer-budget">—</span></div>
+      <div>RSSE – AB 209: <span id="ab209-budget">—</span></div>
+      <div>Small-Residential Storage: <span id="smallres-budget">—</span></div>
+    </section>
 
-  <output id="result" class="hidden" aria-live="polite"></output>
-</section>
+    <section class="card">
+      <h2>Map Preview</h2>
+      <div id="map"></div>
+    </section>
+  </main>
 
-<!-- === MAPS === -->
-<section class="maps card">
-  <h2 class="section">Reference maps &amp; tools</h2>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    // Helpers
+    const timeoutFetch = (url, opts = {}, timeout = 15000) =>
+      Promise.race([
+        fetch(url, opts),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout)),
+      ]);
 
-  <h3>SB 535 Disadvantaged Communities</h3>
-  <iframe src="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/" title="DAC map"></iframe>
+    const $ = id => document.getElementById(id);
 
-  <h3>Community Air Protection (CAP UC)</h3>
-  <iframe src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2" title="CAP UC map"></iframe>
+    const formatMoney = n => n ? `$${Number(n).toLocaleString()}` : '—';
 
-  <h3>SCE Public-Safety Shutoff Status</h3>
-  <p><a href="https://www.sce.com/outages-safety/outage-center/check-outage-status" target="_blank" rel="noopener">Check PSPS status ↗</a></p>
-</section>
-</main>
+    // State
+    let lat, lon;
 
-<script>
-/* ---------- CONFIG ---------- */
-const CONFIG={
-  /* live budget scrape */
-  metricsUrl:'https://www.selfgenca.com/home/program_metrics/',
-  /* layer & API URLs (unchanged from previous builds) */
-  geocode:'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates',
-  sb535:'https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query',
-  fire:['https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query',
-        'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query'],
-  psps:'https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query',
-  paUrl:'',                 // polygon layer for auto-utility (optional)
-  paField:'UTILITY_CODE',
-  hud:{key:'',year:2024,base:'https://www.huduser.gov/hudapi/public/il/v2/zip'},
-  openDate:'2025-05-20',    // IOU launch date
-  R:{perWh:1.10,perKw:3100},
-  timeout:15000
-};
+    const cacheResult = (address, data) => {
+      localStorage.setItem(`addr:${address}`, JSON.stringify(data));
+    };
 
-const IOU=['PGE','SCE','SDGE','SCG'];
+    const loadCached = address => {
+      const data = localStorage.getItem(`addr:${address}`);
+      return data ? JSON.parse(data) : null;
+    };
 
-/* ---------- DOM QUICKREF ---------- */
-const $=s=>document.querySelector(s);
-const els={
-  ratepayer:$('#bucketRatepayer'),ab209:$('#bucketAB209'),smallRes:$('#bucketSmallRes'),
-  wait:$('#waitBanner'),util:$('#util'),utilPill:$('#utilPill'),utilTxt:$('#utilTxt'),
-  addr:$('#addr'),addrBtn:$('#addrBtn'),addrClr:$('#addrClr'),addrStatus:$('#addrStatus'),mini:$('#miniMap'),
-  zip:$('#zip'),income:$('#income'),hudBtn:$('#hudBtn'),hudMsg:$('#hudMsg'),
-  cust:$('#cust'),custErr:$('#custErr'),kwh:$('#kwh'),kwhErr:$('#kwhErr'),kw:$('#kw'),ami:$('#ami'),
-  calcBtn:$('#calcBtn'),pdfBtn:$('#pdfBtn'),res:$('#result'),form:$('#calcForm')
-};
+    // Geocode and Layer Checks
+    async function fetchAddress(address) {
+      const cached = loadCached(address);
+      if (cached) return cached;
 
-/* ---------- UTILITIES ---------- */
-const fmt=n=>`$${Math.round(n).toLocaleString()}`;
-function money(n){return Number(n).toLocaleString()}
-const timeout=(p,l)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(Error(l+' timeout')),CONFIG.timeout))]);
-const fetchText=u=>timeout(fetch(u),'fetch').then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.text()});
-const fetchJSON=u=>timeout(fetch(u),'fetch').then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()});
-const todayISO=()=>new Date().toISOString().slice(0,10);
+      const res = await timeoutFetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${encodeURIComponent(address)}&f=json`);
+      const json = await res.json();
+      const candidate = json.candidates[0];
+      if (!candidate) throw new Error("Address not found");
+      lat = candidate.location.y;
+      lon = candidate.location.x;
+      return { lat, lon };
+    }
 
-/* ---------- LIVE BUDGET SCRAPER ---------- */
-(async()=>{
-  try{
-    const html=await fetchText(CONFIG.metricsUrl);
-    const grab=(title,re)=>{const sec=html.split(title)[1]||'';return [...sec.matchAll(re)].slice(0,4).reduce((s,m)=>s+Number(m[1].replace(/[,]/g,'')),0);}
-    /* RSSE – Ratepayer (authorized collections) */
-    const rateColl = grab('Residential Solar and Storage Equity - Ratepayer','Authorized Collections \\$(\\d[\\d,]*\\.\\d{2})');
-    /* RSSE – AB 209 (auth + realloc) */
-    const abAuth = grab('Residential Solar and Storage Equity - AB 209','Authorized Collections \\$(\\d[\\d,]*\\.\\d{2})');
-    const abRe   = grab('Residential Solar and Storage Equity - AB 209','Reallocation[s]? \\$(\\d[\\d,]*\\.\\d{2})');
-    const smallColl = grab('Small Residential Storage','Authorized Collections \\$(\\d[\\d,]*\\.\\d{2})');
-    els.ratepayer.textContent = fmt(rateColl);
-    els.ab209.textContent     = fmt(abAuth+abRe);
-    els.smallRes.textContent  = fmt(smallColl);
-  }catch(e){console.warn('Budget scrape failed:',e)}
-})();
+    async function pointInPolygon(lat, lon, url) {
+      const q = `${url}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&f=json`;
+      const res = await timeoutFetch(q);
+      const json = await res.json();
+      return json.features.length > 0;
+    }
 
-/* ---------- UTILITY STATUS ---------- */
-function setUtil(code){
-  let pill=els.utilPill,txt=els.utilTxt,open=false;
-  const today=todayISO();
-  if(IOU.includes(code)){open=today>=CONFIG.openDate}else if(code==='OTHER')open=true;
-  pill.textContent=open?'OPEN':'PENDING';pill.className='pill '+(open?'open':'pending');
-  txt.textContent=open?'':'Select / detect utility first';
-  els.calcBtn.disabled=!open;els.wait.classList.toggle('hidden',!IOU.includes(code));
-}
-els.util.onchange=()=>setUtil(els.util.value);
+    async function fetchLayers() {
+      const dac = await pointInPolygon(lat, lon, 'https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query');
+      const fireT3 = await pointInPolygon(lat, lon, 'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query');
+      const fireT2 = await pointInPolygon(lat, lon, 'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query');
+      const psps = await pointInPolygon(lat, lon, 'https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query');
+      return { dac, fire: fireT3 || fireT2, psps };
+    }
 
-/* ---------- ADDRESS CHECK (truncated: same logic as before) ---------- */
-/* -- only shows DAC/Fire/PSPS badges & auto-utility; omitted details for brevity -- */
-els.addrBtn.onclick=async()=>{const v=els.addr.value.trim();if(!v){msg('Enter address');return}
-function msg(m,b=[]){els.addrStatus.innerHTML=`${b.map(x=>`<span class="badge">${x}</span>`).join(' ')} ${m}`;els.addrStatus.classList.remove('hidden')}
-try{
-  msg('Geocoding…');const p=await fetchJSON(`${CONFIG.geocode}?SingleLine=${encodeURIComponent(v)}&f=json`).then(j=>j.candidates[0].location);
-  els.mini.classList.remove('hidden');if(!window.map){map=L.map(els.mini).setView([p.y,p.x],14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-    marker=L.marker([p.y,p.x]).addTo(map);}else{map.setView([p.y,p.x],14);marker.setLatLng([p.y,p.x]);}
+    async function fetchAMI(zip, income) {
+      const res = await timeoutFetch(`https://www.huduser.gov/hudapi/public/il/v2/zip/${zip}?year=2024`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      const json = await res.json();
+      const mfi = json?.IncomeLimits?.[0]?.medianFamilyIncome;
+      if (mfi && income) {
+        const ami = (income / mfi) * 100;
+        return Math.round(ami);
+      }
+      return null;
+    }
 
-  const [dac,fire,psps] = await Promise.all([
-    fetchJSON(CONFIG.sb535+qry(p)).then(j=>j.features.length>0).catch(()=>false),
-    Promise.any(CONFIG.fire.map(u=>fetchJSON(u+qry(p)))).then(j=>j.features.length>0).catch(()=>false),
-    fetchJSON(CONFIG.psps+qry(p)).then(j=>j.features.length>0).catch(()=>false)
-  ]);
+    async function fetchBudgets() {
+      try {
+        const res = await timeoutFetch('https://www.selfgenca.com/home/program_metrics/');
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const rows = Array.from(doc.querySelectorAll("table tr"));
+        const findTotal = title => {
+          const row = rows.find(r => r.innerText.includes(title));
+          if (!row) return null;
+          const cells = row.querySelectorAll("td");
+          let total = 0;
+          for (let i = 1; i <= 4; i++) {
+            total += parseFloat(cells[i].innerText.replace(/[^0-9.]/g, "")) || 0;
+          }
+          return `$${Math.round(total).toLocaleString()}`;
+        };
+        $("ratepayer-budget").innerText = findTotal("Residential Solar & Storage Equity – Ratepayer") || "—";
+        $("ab209-budget").innerText = findTotal("Residential Solar & Storage Equity – AB 209") || "—";
+        $("smallres-budget").innerText = findTotal("Small Residential Storage") || "—";
+      } catch (e) {
+        $("ratepayer-budget").innerText = "—";
+        $("ab209-budget").innerText = "—";
+        $("smallres-budget").innerText = "—";
+      }
+    }
 
-  let util=null;if(CONFIG.paUrl){try{util=await fetchJSON(CONFIG.paUrl+qry(p)).then(j=>j.features[0]?.attributes[CONFIG.paField]||null);}catch{}}
-  if(util){els.util.value=util;setUtil(util);}
-  msg(`(${p.y.toFixed(5)},${p.x.toFixed(5)})`,[util||'',dac?'DAC':'',fire?'Fire':'',psps?'PSPS':''].filter(Boolean));
-}catch(e){msg('Address check failed');console.error(e)}
-function qry(pt){return `?f=json&geometry=${pt.x},${pt.y}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&returnGeometry=false&outFields=*`}
-};
+    // PDF Export
+    $("export-pdf").onclick = () => {
+      const html = `
+        <html><head><title>SGIP Results</title></head><body>
+        <h1>SGIP Incentive Summary</h1>
+        <p>${$("storage-result").innerText}</p>
+        <p>${$("solar-result").innerText}</p>
+        <p>${$("total-pill").innerText}</p>
+        </body><script>window.print()</script></html>`;
+      const w = window.open();
+      w.document.write(html);
+      w.document.close();
+    };
 
-/* ---------- HUD ---------- */
-els.hudBtn.onclick=async()=>{const zip=els.zip.value.trim(),inc=+els.income.value;if(zip.length!==5||!inc){els.hudMsg.textContent='ZIP & income required';return}
-try{els.hudMsg.textContent='HUD…';const j=await fetchJSON(`${CONFIG.hud.base}/${zip}?year=${CONFIG.hud.year}&Authorization=Bearer ${CONFIG.hud.key}`);
-const mfi=j.data?.[0]?.medianFamilyIncome;if(!mfi)throw 0;const pct=(inc/mfi*100).toFixed(1);els.ami.value=pct;els.hudMsg.textContent='AMI '+pct+'%';}catch{els.hudMsg.textContent='HUD lookup failed'}};
+    // Leaflet map
+    const map = L.map('map').setView([37.8, -122.4], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    let marker;
 
-/* ---------- FORM ---------- */
-els.form.onsubmit=e=>{
-  e.preventDefault();if(!validate())return;
-  const kwh=+els.kwh.value, kw=+els.kw.value||0, storage=kwh*1000*CONFIG.R.perWh, solar=kw*CONFIG.R.perKw, total=storage+solar;
-  els.res.innerHTML=`Estimated incentive\n• Storage $${money(storage)}\n• Solar $${money(solar)}\n\n<span class="total-pill">TOTAL $${money(total)}</span>`;
-  els.res.classList.remove('hidden');els.pdfBtn.disabled=false;
-};
-els.pdfBtn.onclick=()=>{const w=open();w.document.write(`<pre style="font-family:system-ui">${els.res.innerText}</pre>`);w.print();}
-els.form.onreset=()=>{els.res.classList.add('hidden');els.pdfBtn.disabled=true;}
+    // Main handler
+    $("calc-form").onsubmit = async e => {
+      e.preventDefault();
+      $("customer-error").innerText = "";
+      $("kwh-error").innerText = "";
 
-/* enable calculate button when util status ready */
-setUtil('');
-function validate(){let ok=true;if(!els.cust.value){els.custErr.textContent='Select class';els.custErr.classList.remove('hidden');ok=false}else els.custErr.classList.add('hidden');
-if(!+els.kwh.value){els.kwhErr.textContent='kWh > 0';els.kwhErr.classList.remove('hidden');ok=false}else els.kwhErr.classList.add('hidden');return ok}
-</script>
+      const kwh = parseFloat($("kwh").value);
+      const kw = parseFloat($("kw").value) || 0;
+      const income = parseFloat($("income").value);
+      const address = $("address").value;
+      const zip = $("zip").value;
+      const customerClass = $("customer-class").value;
+      const utility = $("utility").value;
+
+      if (!customerClass) return $("customer-error").innerText = "Customer class required.";
+      if (!kwh || kwh <= 0) return $("kwh-error").innerText = "Battery capacity must be greater than 0.";
+
+      $("status-pill").innerText = "Status: Calculating...";
+
+      try {
+        const addr = await fetchAddress(address);
+        lat = addr.lat;
+        lon = addr.lon;
+
+        if (marker) map.removeLayer(marker);
+        map.setView([lat, lon], 13);
+        marker = L.marker([lat, lon]).addTo(map);
+
+        const layers = await fetchLayers();
+        $("dac-pill").innerText = "DAC: " + (layers.dac ? "✔" : "✘");
+        $("fire-pill").innerText = "Fire Zone: " + (layers.fire ? "✔" : "✘");
+        $("psps-pill").innerText = "PSPS: " + (layers.psps ? "✔" : "✘");
+
+        if (zip && income) {
+          const ami = await fetchAMI(zip, income);
+          $("ami-pill").innerText = "AMI: " + (ami ? ami + "%" : "—");
+        }
+
+        const storageIncentive = kwh * 1000 * 1.10;
+        const solarIncentive = kw * 3100;
+        $("storage-result").innerText = formatMoney(storageIncentive);
+        $("solar-result").innerText = formatMoney(solarIncentive);
+        $("total-pill").innerText = "Total: " + formatMoney(storageIncentive + solarIncentive);
+
+        const today = new Date();
+        const gateDate = new Date("2025-05-20");
+        if (["PGE", "SCE", "SDGE", "SCG"].includes(utility) && today < gateDate) {
+          $("status-pill").innerText = "Status: PENDING";
+        } else {
+          $("status-pill").innerText = "Status: ELIGIBLE";
+        }
+
+        cacheResult(address, { lat, lon, ...layers, utility });
+      } catch (err) {
+        $("status-pill").innerText = "Error: " + err.message;
+      }
+    };
+
+    fetchBudgets();
+  </script>
 </body>
 </html>
