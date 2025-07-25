@@ -1,202 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SGIP Eligibility & Incentive Calculator</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  $1
-    .animated {
-      transition: all 0.4s ease;
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    .animated.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-$2
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>SGIP Rebate & Eligibility Calculator</title>
+  <style>
+    body{font-family:Arial,sans-serif;background:#f4f8fb;color:#222;margin:0;padding:0}
+    .container{max-width:700px;margin:auto;padding:1rem;background:#fff;box-shadow:0 0 8px rgba(0,0,0,0.1)}
+    h1,h2{color:#005daa}
+    .form-group{margin-bottom:1.2rem}
+    label{display:block;font-weight:600;margin-bottom:.3rem}
+    input,select,button{width:100%;padding:.6rem;font-size:1rem;box-sizing:border-box}
+    button{background:#005daa;color:#fff;border:none;cursor:pointer;margin-top:1rem}
+    button:hover{background:#004a8d}
+    .hidden{display:none}
+    #map{height:300px;width:100%;margin-bottom:1.5rem;border:1px solid #ccc}
+    @media(max-width:600px){.container{padding:.8rem}}
+  </style>
 </head>
 <body>
-  <header>SGIP Eligibility & Incentive Calculator</header>
-  <main>
-    <section id="intro" style="border-left: 4px solid #fdb813; padding-left: 1rem; margin-bottom: 2rem; background: #fffbe6;">
-      <h2 style="color: #003c71; font-size: 1.25rem;">🔍 Find Out If You Qualify for California’s SGIP Rebates</h2>
-      <p>Want help paying for a home battery or solar system? The <strong>Self-Generation Incentive Program (SGIP)</strong> offers <strong>cash rebates up to 100%</strong> of system cost for eligible California residents.</p>
+<main class="container">
+  <h1>California SGIP Rebate & Eligibility</h1>
+  <div id="map" aria-label="Interactive map showing DAC and Fire Threat overlays"></div>
 
-      <ul>
-        <li><strong>Enter your address and ZIP code</strong> to verify fire risk, PSPS, or DAC eligibility.</li>
-        <li><strong>Estimate your income</strong> to see if you qualify as low-income (based on HUD AMI).</li>
-        <li><strong>Enter battery and solar sizes</strong> to calculate your estimated incentive.</li>
-        <li><strong>Select your utility provider</strong> (PG&E, SCE, SDG&E, SoCalGas).</li>
-      </ul>
+  <form id="sgipForm" aria-labelledby="sgipForm">
+    <div class="form-group">
+      <label for="address">Project Address</label>
+      <input type="text" id="address" placeholder="City & ZIP in CA" aria-required="true"/>
+    </div>
+    <!-- other inputs... -->
+    <div class="form-group">
+      <label for="incomeLevel">Household Income Level</label>
+      <select id="incomeLevel">
+        <option value="">Select…</option>
+        <option value="low">Low Income</option>
+        <option value="moderate">Moderate Income</option>
+        <option value="high">High Income</option>
+      </select>
+    </div>
+    <button type="submit">Calculate</button>
+  </form>
 
-      <p>We'll check real-time data and calculate whether you qualify for:</p>
-      <ul>
-        <li><span class="pill eligible">Equity Resiliency</span> — for low-income customers in fire-prone or PSPS areas</li>
-        <li><span class="pill eligible">Residential Equity</span> — for low-income customers in disadvantaged communities</li>
-        <li><span class="pill">General Market</span> — standard incentives for residential and commercial storage</li>
-      </ul>
+  <section id="results" class="hidden" aria-live="polite">
+    <h2>Results</h2>
+    <p id="eligibility"></p>
+    <p id="incentiveLevel"></p>
+    <p id="estimatedRebate"></p>
+  </section>
+</main>
 
-      <p style="margin-top: 1rem; background: #fff; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px;"><strong>Example:</strong> “You qualify for <em>Equity Resiliency</em> because your income is below HUD limits and you live in a Tier 2 Fire Threat Zone. You may be eligible for <strong>$10,000+</strong> in battery rebates.”</p>
-    </section>
-    <section>
-      <form id="calc-form">
-        <label for="address">Address</label>
-        <input id="address" required />
+<script src="https://js.arcgis.com/4.25/"></script>
+<script>
+(async()=>{
+  const form=document.getElementById('sgipForm');
+  const mapContainer=document.getElementById('map');
 
-        <label for="zip">ZIP Code</label>
-        <input id="zip" required />
+  const map = new arcgisJsApi.Map({basemap:'topo-vector'});
+  const view = new arcgisJsApi.MapView({container:'map',map,zoom:6,center:[-119,37]});
 
-        <label for="income">Household Income ($)</label>
-        <input id="income" type="number" required />
+  const dacLayer=new arcgisJsApi.FeatureLayer({
+    url:"https://services1.arcgis.com/PCHfdHz4GlDNAhBb/arcgis/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0",
+    outFields:["*"], popupEnabled:false
+  });
+  const fireLayer=new arcgisJsApi.KMLLayer({
+    url:"https://gis.sanramon.ca.gov/server/rest/services/Engineering/CPUC_Fire_Threat/MapServer/generateKml?layers=0&layerOptions=nonComposite",
+    title:"Fire Threat Zones"
+  });
+  map.addMany([dacLayer, fireLayer]);
 
-        <label for="kwh">Battery Size (kWh)</label>
-        <input id="kwh" type="number" step="0.1" required />
-
-        <label for="kw">Solar Size (kW)</label>
-        <input id="kw" type="number" step="0.1" />
-
-        <label for="utility">Utility</label>
-        <select id="utility" required>
-          <option value="">Select</option>
-          <option value="PGE">PG&E</option>
-          <option value="SCE">SCE</option>
-          <option value="SCG">SCG</option>
-          <option value="CSE">CSE (SDG&E)</option>
-        </select>
-
-        <button type="submit">Check Eligibility</button>
-      </form>
-    </section>
-
-    <section class="animated" id="results-section">
-      <div id="storage-result">Storage Incentive: —</div>
-      <div id="solar-result">Solar Incentive: —</div>
-      <div class="pill" id="total-pill">Total: —</div>
-      <div class="pill" id="program-pill">Program: —</div>
-      <div class="pill" id="status-pill">Status: —</div>
-      <div id="eligibility-details"></div>
-    </section>
-  </main>
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script>
-    const arcgisFind = async (address) => {
-      const res = await fetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?SingleLine=${encodeURIComponent(address)}&f=json`);
-      const json = await res.json();
-      const loc = json?.candidates?.[0]?.location;
-      if (!loc) throw new Error('Address not found');
-      return loc;
-    };
-
-    const checkArcGISLayer = async (lat, lon, url) => {
-      const query = `${url}?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&returnCountOnly=true&f=json`;
-      const res = await fetch(query);
-      const json = await res.json();
-      return json?.count > 0;
-    };
-
-    const checkAllLayers = async (lat, lon) => {
-      const dacURL = 'https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query';
-      const fire2URL = 'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query';
-      const fire3URL = 'https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query';
-      const pspsURL = 'https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query';
-
-      const [dac, fire2, fire3, psps] = await Promise.all([
-        checkArcGISLayer(lat, lon, dacURL),
-        checkArcGISLayer(lat, lon, fire2URL),
-        checkArcGISLayer(lat, lon, fire3URL),
-        checkArcGISLayer(lat, lon, pspsURL)
-      ]);
-
-      return {
-        dac,
-        fire: fire2 || fire3,
-        psps
-      };
-    };
-
-    const determineProgram = ({ income, kwh, kw, utility, dac, fire, psps }) => {
-      const rates = {
-        equityResiliency: 1.00,
-        residentialEquity: 1.10,
-        smallRes: 0.15,
-        largeScale: 0.25,
-        generation: 2.00,
-        solarAdder: 3.10
-      };
-
-      let reason = [];
-      const isLowIncome = income && income < 80000;
-      if (fire || psps) reason.push('Fire/PSPS');
-      if (dac) reason.push('DAC');
-      if (isLowIncome) reason.push('Low Income');
-
-      if ((fire || psps) && isLowIncome) return { program: 'Equity Resiliency', rate: rates.equityResiliency, reason: reason.join(', ') };
-      if (isLowIncome && dac) return { program: 'Residential Storage Equity', rate: rates.residentialEquity, reason: reason.join(', ') };
-      if (utility && ['PGE','SCE','SCG','CSE'].includes(utility)) {
-        if (kwh <= 30) return { program: 'Small Residential Storage', rate: rates.smallRes, reason: 'Standard residential customer' };
-        return { program: 'Large-Scale Storage', rate: rates.largeScale, reason: 'Large system' };
-      }
-      return { program: 'General Market (Ineligible)', rate: 0, reason: 'Outside IOU territory or missing criteria' };
-    };
-
-    async function fetchAMI(zip) {
-      try {
-        const res = await fetch(`https://www.huduser.gov/hudapi/public/il/v2/zip/${zip}?year=2024`, {
-          headers: { 'Accept': 'application/json', 'apikey': 'REPLACE_WITH_KEY' }
-        });
-        const json = await res.json();
-        const median = json?.IncomeLimits?.[0]?.MedianFamilyIncome;
-        return median || null;
-      } catch {
-        return null;
-      }
-    }
-
-    $1
-      const results = document.getElementById('results-section');
-      results.classList.remove('show');
-      e.preventDefault();
-      const address = document.getElementById('address').value;
-      const zip = document.getElementById('zip').value;
-      const incomeInput = document.getElementById('income');
-      const income = parseFloat(incomeInput.value);
-      const medianIncome = await fetchAMI(zip);
-      if (medianIncome && !isNaN(income)) {
-        const amiPct = Math.round(income / medianIncome * 100);
-        incomeInput.setAttribute('aria-description', `~${amiPct}% AMI`);
-      }
-      const kwh = parseFloat(document.getElementById('kwh').value);
-      const kw = parseFloat(document.getElementById('kw').value || '0');
-      const utility = document.getElementById('utility').value;
-
-      try {
-        const { x: lon, y: lat } = await arcgisFind(address);
-        const layers = await checkAllLayers(lat, lon);
-
-        const program = determineProgram({ income, kwh, kw, utility, ...layers });
-        const storageIncentive = kwh * 1000 * program.rate;
-        const solarIncentive = kw * 3100;
-        const total = storageIncentive + solarIncentive;
-
-        document.getElementById('storage-result').textContent = `Storage Incentive: $${storageIncentive.toLocaleString()}`;
-        document.getElementById('solar-result').textContent = `Solar Incentive: $${solarIncentive.toLocaleString()}`;
-        document.getElementById('total-pill').textContent = `Total: $${total.toLocaleString()}`;
-        document.getElementById('program-pill').textContent = `Program: ${program.program}`;
-        const statusPill = document.getElementById('status-pill');
-        statusPill.textContent = program.rate > 0 ? 'Status: Eligible' : 'Status: Ineligible';
-        statusPill.className = `pill ${program.rate > 0 ? 'eligible' : 'ineligible'}`;
-        $1
-        setTimeout(() => results.classList.add('show'), 50);
-      } catch (err) {
-        $1
-        results.classList.add('show');
-      }
+  form.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const addr=document.getElementById('address').value;
+    const geo = await arcgisJsApi.identity; // placeholder for geocode
+    const geocode = await arcgisJsApi.esriRequest({
+      url:"https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+      params:{SingleLine:addr,f: 'json', outFields:'*',token:'YOUR_TOKEN'}
     });
-  </script>
+    if(!geocode.data.candidates.length) {
+      alert('Address not found.');
+      return;
+    }
+    const pt=geocode.data.candidates[0].location;
+    view.goTo({center:pt, zoom:12});
+
+    const dacQuery = await dacLayer.queryFeatures({geometry:pt, spatialRelationship:"intersects", outFields:["*"]});
+    const inDAC = dacQuery.features.length>0;
+    const fireQuery = await fireLayer.queryFeatures({geometry:pt, outFields:["HFTD"]});
+    const inFire = fireQuery.features.some(f=>["Tier 2","Tier 3"].includes(f.attributes.HFTD));
+
+    const income=document.getElementById('incomeLevel').value;
+    let path="General Market", rate=0.15;
+    if(income==="low"){ path="Equity"; rate=1.10; }
+    if(inDAC||inFire){ path="Equity Resiliency"; rate=1.00; }
+
+    const size = parseFloat(document.getElementById('systemSize').value)||0;
+    const solar = document.getElementById('techType').value==="solar_battery" ? parseFloat(document.getElementById('solarSize').value)||0 : 0;
+    const solarRate = solar>0 && path!=="General Market" ? 3.10 : 0;
+    const rebate = size*1000*rate + solar*1000*solarRate;
+
+    document.getElementById('eligibility').textContent=`Pathway: ${path}`;
+    document.getElementById('incentiveLevel').textContent=`Rates: $${rate.toFixed(2)}/Wh storage${solarRate?` & $${solarRate.toFixed(2)}/kW solar`:''}`;
+    document.getElementById('estimatedRebate').textContent=`Estimated Rebate: $${rebate.toLocaleString()}`;
+    document.getElementById('results').classList.remove('hidden');
+  });
+})();
+</script>
 </body>
 </html>
+
 
 
 
