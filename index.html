@@ -176,10 +176,11 @@
         <div>
           <label for="care">7. CARE Program Participation</label>
           <select id="care"><option value=""></option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option></select>
+          <small>Customers must provide proof of eligibility status in the MASH, SOMAH, SASH, or DAC-SASH, CARE, FERA, or ESA program. CARE, FERA, and ESA documents must reflect income verification has been completed as a result of participation in the programs.</small>
         </div>
         <div>
-          <label for="helpEnroll">8. Help enrolling in CARE discount?</label>
-          <select id="helpEnroll"><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select>
+          <label for="govAssistance">8. Receiving any government assistance (e.g., SNAP, Medicaid, SSI, etc.)?</label>
+          <select id="govAssistance"><option value=""></option><option value="yes">Yes</option><option value="no">No</option></select>
         </div>
         <div>
           <label for="capacity">9. Storage Capacity (kWh)</label>
@@ -213,7 +214,7 @@
           const multiPath = document.getElementById('equityPathway1').value;
           const singlePath = document.getElementById('singleEquity').value;
           const careSelected = document.getElementById('care').value === 'yes';
-          const helpEnroll = document.getElementById('helpEnroll').value === 'yes';
+          const govAssist = document.getElementById('govAssistance').value === 'yes';
           const capacity = parseFloat(document.getElementById('capacity').value) || 0;
           const solarCap = parseFloat(document.getElementById('solarCapacity').value) || 0;
 
@@ -221,16 +222,16 @@
 
           if ((cust === 'residential-multi' && multiPath) || (cust === 'residential-single' && singlePath)) {
             budget = 'Equity Storage';
-            rate = 1.10; // Updated to San Joaquin Valley/Residential Equity
+            rate = sjvResRate; // $1.10/Wh
           } else if (inFire || inPSPS) {
             budget = 'Equity Resiliency Storage';
-            rate = resiliencyEqRate;
+            rate = resiliencyEqRate; // $1.00/Wh
           } else if (cust.startsWith('residential')) {
             budget = 'Small Residential Storage';
-            rate = smallResRate;
+            rate = smallResRate; // $0.15/Wh
           } else {
             budget = 'Large-Scale Storage';
-            rate = largeScaleRate;
+            rate = largeScaleRate; // $0.25/Wh
           }
 
           const storageIncentive = capacity * 1000 * rate;
@@ -242,8 +243,8 @@
             explanation += `Additionally, ${solarCap.toLocaleString()} kW of solar PV earns $${solarIncentive.toLocaleString()} at $${solarRate}/kW. `;
           if (careSelected)
             explanation += `As a CARE participant, you save 20% on your electric bill. `;
-          if (helpEnroll)
-            explanation += `We can assist you with enrolling in the CARE discount. `;
+          if (govAssist)
+            explanation += `Because you indicated you're receiving government assistance, you may qualify for CARE automatically. `;
           explanation += `Total SGIP incentives: $${totalIncentive.toLocaleString()}.`;
 
           const res = document.getElementById('result');
