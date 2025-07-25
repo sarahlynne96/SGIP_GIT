@@ -22,10 +22,9 @@
 
   <style>
     :root {
-      /* CPUC-ish palette */
-      --color-primary: #fdb813;  /* gold */
-      --color-secondary: #003c71;/* navy */
-      --color-accent: #005eb8;   /* blue accent */
+      --color-primary: #fdb813;
+      --color-secondary: #003c71;
+      --color-accent: #005eb8;
 
       --color-bg: #f7f7f7;
       --color-surface: #ffffff;
@@ -335,7 +334,7 @@
             <td>$280,000,000</td>
           </tr>
           <tr>
-            <td>Solar Incentives</td>
+          <td>Solar Incentives</td>
             <td>$18,000,000</td>
           </tr>
         </tbody>
@@ -381,6 +380,36 @@
 
         <small class="help">
           Uses ArcGIS REST queries. Results are advisory only—confirm with official tools.
+        </small>
+      </section>
+
+      <!-- Income auto-fill with HUD -->
+      <section class="address-check" aria-labelledby="hud-title">
+        <h3 id="hud-title">Income Auto‑Fill (HUD)</h3>
+
+        <div class="form-field">
+          <label for="hudZip">ZIP Code</label>
+          <input id="hudZip" type="text" inputmode="numeric" pattern="\\d{5}" placeholder="e.g., 90001" />
+        </div>
+
+        <div class="form-field">
+          <label for="hudHousehold">Household Size</label>
+          <input id="hudHousehold" type="number" min="1" step="1" value="4" />
+        </div>
+
+        <div class="form-field">
+          <label for="hudIncome">Annual Household Income ($)</label>
+          <input id="hudIncome" type="number" min="0" step="100" placeholder="e.g., 55000" />
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="hudFetchBtn" class="btn-primary">Fetch & auto‑fill AMI%</button>
+        </div>
+
+        <div id="hudStatus" class="help" role="status" aria-live="polite"></div>
+        <small class="help">
+          Requires a HUD USER API key. We approximate AMI% as income ÷ Median Family Income (MFI). If you prefer,
+          we can switch to the household‑size adjusted 100% AMI field if your PA requires it.
         </small>
       </section>
 
@@ -436,7 +465,7 @@
 
         <!-- 5 -->
         <div class="form-field">
-          <label for="amiPercent">5. Household income as % of AMI (Area Median Income)</label>
+          <label for="amiPercent">5. Household income as % of AMI (auto‑filled or manual)</label>
           <input
             type="number"
             id="amiPercent"
@@ -447,7 +476,7 @@
             placeholder="e.g., 60 (means 60% of AMI)"
           />
           <small class="help">
-            If ≤ 80%, you’re considered low‑income for SGIP Equity. If you don’t know, leave blank and indicate program participation below.
+            If ≤ 80%, you’re considered low‑income for SGIP Equity.
           </small>
         </div>
 
@@ -580,7 +609,14 @@
       // Program open dates
       openDates: {
         IOUs: "2025-05-20", // PG&E, SCE, SDG&E, SoCalGas
-        LADWP: null         // "later in 2025" - no fixed date
+        LADWP: null         // later 2025
+      },
+
+      // HUD API
+      hud: {
+        apiKey: "",           // <<<------- PASTE YOUR HUD USER API KEY HERE
+        year: 2024,           // change if you need a specific year
+        baseZipUrl: "https://www.huduser.gov/hudapi/public/il/v2/zip" // /{zip}?year=YYYY
       }
     };
 
@@ -602,6 +638,8 @@
       result: "#result",
       btnReset: "#btnReset",
       btnExport: "#btnExport",
+      btnCheck: "#btnCheck",
+
       addressInput: "#addressInput",
       checkAddressBtn: "#checkAddressBtn",
       clearAddressBtn: "#clearAddressBtn",
@@ -610,11 +648,20 @@
       inFire: "#inFire",
       inPSPS: "#inPSPS",
       miniMap: "#miniMap",
+
       utility: "#utility",
       utilityStatusPill: "#utilityStatusPill",
       utilityStatusText: "#utilityStatusText",
       waitlistBanner: "#waitlistBanner",
-      btnCheck: "#btnCheck"
+
+      // HUD
+      hudZip: "#hudZip",
+      hudHousehold: "#hudHousehold",
+      hudIncome: "#hudIncome",
+      hudFetchBtn: "#hudFetchBtn",
+      hudStatus: "#hudStatus",
+
+      amiPercent: "#amiPercent"
     };
 
     const qs = (sel, root = document) => root.querySelector(sel);
@@ -622,7 +669,7 @@
     const money2 = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const number1 = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
-    const ADDRESS_CACHE_KEY = "sgipAddressCache_v2";
+    const ADDRESS_CACHE_KEY = "sgipAddressCache_v3";
     function loadCache() {
       try { return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {}; } catch { return {}; }
     }
@@ -654,14 +701,13 @@
       let pending = false;
 
       if (IOU_CODES.includes(utilityCode)) {
-        // IOUs open May 20, 2025
         if (isAfterOrEqual(today, CONFIG.openDates.IOUs)) {
           open = true;
         } else {
           pending = true;
         }
       } else if (utilityCode === "LADWP") {
-        pending = true; // "later 2025"
+        pending = true;
       } else if (utilityCode === "OTHER") {
         open = true;
       } else {
@@ -673,13 +719,13 @@
         pill.classList.add("status-open");
         if (IOU_CODES.includes(utilityCode)) {
           text.innerHTML = ` Opens: May 20, 2025 (now accepting).`;
-          waitlistBanner.classList.remove("hidden"); // simple rule to show banner for IOUs
+          waitlistBanner.classList.remove("hidden");
         } else if (utilityCode === "OTHER") {
           text.textContent = ` Check your program administrator for openings.`;
           waitlistBanner.classList.add("hidden");
         }
         calcBtn.disabled = false;
-        exportBtn.disabled = true; // enable after first calc
+        exportBtn.disabled = true;
       } else if (pending) {
         pill.textContent = "PENDING";
         pill.classList.add("status-pending");
@@ -688,7 +734,7 @@
         } else if (utilityCode === "LADWP") {
           text.innerHTML = ` LADWP opens later in 2025.`;
         } else {
-          text.innerHTML = ` Select your utility to continue.`;
+          text.innerHTML = ` Select a utility to continue.`;
         }
         calcBtn.disabled = true;
         exportBtn.disabled = true;
@@ -731,7 +777,7 @@
     }
 
     function equityEligibilityReason({ amiPercent, careProgram, inDAC }) {
-      if (typeof amiPercent === "number" && amiPercent <= 80) {
+      if (typeof amiPercent === "number" && !isNaN(amiPercent) && amiPercent <= 80) {
         return "Income ≤ 80% AMI";
       }
       if (careProgram === true) {
@@ -772,7 +818,6 @@
       const reason = equityEligibilityReason({ amiPercent, careProgram, inDAC });
       const equityEligible = !!reason;
 
-      // Simple waitlist flag (for IOUs), can be improved with live data
       const possibleWaitlist = IOU_CODES.includes(utilityCode);
 
       let explanation = `
@@ -784,7 +829,7 @@
 
 <strong>Your eligibility (auto-evaluated)</strong>
 • Equity-eligible: ${equityEligible ? "Yes" : "No"}${equityEligible ? ` (Reason: ${reason})` : ""}  
-• AMI %: ${typeof amiPercent === "number" ? amiPercent + "%" : "not provided"}  
+• AMI %: ${typeof amiPercent === "number" && !isNaN(amiPercent) ? amiPercent.toFixed(1) + "%" : "not provided"}  
 • CARE/FERA/ESA: ${careProgram ? "Yes" : "No/Unknown"}  
 • DAC: ${inDAC ? "Yes" : "No"}  
 
@@ -807,6 +852,29 @@ autoPvKwUsed !== null
 `;
 
       return { explanation };
+    }
+
+    /* ---------- HUD API ---------- */
+    async function fetchHudAMIByZip(zip, year, apiKey) {
+      if (!apiKey) throw new Error("No HUD API key configured in CONFIG.hud.apiKey");
+      const url = `${CONFIG.hud.baseZipUrl}/${zip}?year=${year}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${apiKey}` }
+      });
+      if (!res.ok) throw new Error(`HUD API error: ${res.status}`);
+      const json = await res.json();
+      return json;
+    }
+
+    function computeAmiPercentFromHudResponse(json, income) {
+      // HUD v2 returns: { "data": [ { "medianFamilyIncome": number, ... } ] }
+      // We approximate AMI% = income / MFI * 100
+      const d = json?.data?.[0];
+      if (!d || typeof d.medianFamilyIncome !== "number") {
+        throw new Error("Could not find Median Family Income in HUD response.");
+      }
+      const mfi = d.medianFamilyIncome;
+      return (income / mfi) * 100;
     }
 
     /* ---------- ArcGIS helpers ---------- */
@@ -942,6 +1010,13 @@ autoPvKwUsed !== null
       const inFireSelect = qs(SELECTORS.inFire);
       const inPSPSSelect = qs(SELECTORS.inPSPS);
 
+      const hudZip = qs(SELECTORS.hudZip);
+      const hudHousehold = qs(SELECTORS.hudHousehold);
+      const hudIncome = qs(SELECTORS.hudIncome);
+      const hudFetchBtn = qs(SELECTORS.hudFetchBtn);
+      const hudStatus = qs(SELECTORS.hudStatus);
+      const amiPercentInput = qs(SELECTORS.amiPercent);
+
       // Initialize
       setUtilityStatus("");
 
@@ -949,6 +1024,42 @@ autoPvKwUsed !== null
         setUtilityStatus(utilitySelect.value);
       });
 
+      // HUD AMI auto-fill
+      hudFetchBtn.addEventListener("click", async () => {
+        hudStatus.textContent = "";
+        const zip = hudZip.value.trim();
+        const hhSize = parseInt(hudHousehold.value, 10);
+        const income = parseFloat(hudIncome.value);
+
+        if (!zip || zip.length !== 5) {
+          hudStatus.textContent = "Please enter a 5-digit ZIP code.";
+          return;
+        }
+        if (!hhSize || hhSize <= 0) {
+          hudStatus.textContent = "Please enter a valid household size.";
+          return;
+        }
+        if (isNaN(income) || income <= 0) {
+          hudStatus.textContent = "Please enter a valid annual household income.";
+          return;
+        }
+
+        try {
+          hudStatus.textContent = "Fetching HUD income limits...";
+          const json = await fetchHudAMIByZip(zip, CONFIG.hud.year, CONFIG.hud.apiKey);
+
+          // NOTE: This is an approximation using MFI; change if you want size-adjusted 100% AMI.
+          const pct = computeAmiPercentFromHudResponse(json, income);
+
+          amiPercentInput.value = pct.toFixed(1);
+          hudStatus.textContent = `Estimated AMI% = ${pct.toFixed(1)}%. (income ÷ MFI × 100)`;
+        } catch (e) {
+          console.error(e);
+          hudStatus.textContent = `HUD lookup failed: ${e.message}`;
+        }
+      });
+
+      // Address checks
       checkBtn.addEventListener("click", async () => {
         const raw = addressInput.value.trim();
         if (!raw) {
@@ -1028,10 +1139,10 @@ autoPvKwUsed !== null
         inPSPSSelect.value = "";
       });
 
+      // Calculate
       form.addEventListener("submit", e => {
         e.preventDefault();
 
-        // gate by utility open status
         const util = utilitySelect.value;
         const utilOpen =
           (IOU_CODES.includes(util) && isAfterOrEqual(todayISO(), CONFIG.openDates.IOUs)) ||
