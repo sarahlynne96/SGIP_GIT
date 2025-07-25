@@ -1,1249 +1,967 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light" />
-  <title>SGIP Residential Solar & Storage Equity Calculator</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SGIP Residential Solar & Storage Equity Calculator</title>
+<meta name="color-scheme" content="light" />
 
-  <!-- Leaflet for the small map preview -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-o9N1j7kGStG3v3lR82GkGzm1G3S2MKCkG4ZkT2f0Xpw="
-    crossorigin=""
-  />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-o9N1j7kGStG3v3lR82GkGzm1G3S2MKCkG4ZkT2f0Xpw="
-    crossorigin=""
-    defer
-  ></script>
+<!-- Leaflet (mini map) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin />
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
 
-  <style>
-    :root {
-      --color-primary: #fdb813;
-      --color-secondary: #003c71;
-      --color-accent: #005eb8;
+<style>
+  :root{
+    --primary:#ff8c00;
+    --primary-dark:#ff7a00;
+    --secondary:#0f172a; /* dark navy */
+    --accent:#7c3aed;    /* purple accent */
+    --bg:#f5f6fa;
+    --surface:rgba(255,255,255,0.7);
+    --surface-solid:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --border:rgba(255,255,255,0.3);
+    --error:#e11d48;
+    --warn:#b65e00;
 
-      --color-bg: #f7f7f7;
-      --color-surface: #ffffff;
-      --color-text: #1f1f1f;
-      --color-text-muted: #666;
-      --color-border: #e5e5e5;
-      --color-error: #c0392b;
-      --color-warn: #b65e00;
+    --radius:14px;
+    --shadow:0 12px 24px -12px rgba(0,0,0,.2);
+    --backdrop:blur(14px) saturate(150%);
 
-      --focus-ring: 3px solid #005eb8;
+    --fs-sm:.875rem;
+    --fs-base:1rem;
+    --fs-lg:1.125rem;
+    --fs-xl:1.5rem;
+    --fs-2xl:2rem;
+  }
 
-      --fs-base: 1rem;
-      --fs-sm: 0.875rem;
-      --fs-lg: 1.125rem;
-      --fs-xl: clamp(1.25rem, 3vw, 1.75rem);
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    background:linear-gradient(135deg,#ffb347 0%,#ffcc33 35%,#ffe59e 100%);
+    min-height:100vh;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
 
-      --space-1: 0.25rem;
-      --space-2: 0.5rem;
-      --space-3: 0.75rem;
-      --space-4: 1rem;
-      --space-5: 1.5rem;
-      --space-6: 2rem;
+  header{
+    padding:2rem 1rem 4rem;
+    background:linear-gradient(135deg,#ff7a00 0%,#ffb347 60%,#ffcc33 100%);
+    color:#000;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute;inset:0;
+    background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="400" viewBox="0 0 1600 400"><path fill="%23ffffff22" d="M0 300 C 300 200 600 350 900 250 C 1200 150 1400 280 1600 200 L 1600 400 L 0 400 Z"/></svg>') center/cover no-repeat;
+    opacity:.6;
+    pointer-events:none;
+  }
+  h1{
+    margin:0 auto;
+    max-width:1100px;
+    font-size:var(--fs-2xl);
+    font-weight:800;
+    line-height:1.1;
+    text-shadow:0 1px 0 rgba(255,255,255,.2);
+  }
 
-      --radius: 0.5rem;
-      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-      --transition: 160ms ease;
+  .container{
+    max-width:1300px;margin:-3rem auto 4rem;
+    padding:0 1rem;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:1.5rem;
+  }
+  @media(min-width:1024px){
+    .container{
+      grid-template-columns:1fr 420px;
+      grid-template-areas:
+        "main calc"
+        "maps maps";
+      gap:2rem;
     }
+    .main{grid-area:main;}
+    .calc-wrap{grid-area:calc;}
+    .maps{grid-area:maps;}
+  }
 
-    @media (prefers-reduced-motion: reduce) {
-      * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
-    }
+  .card{
+    background:var(--surface);
+    -webkit-backdrop-filter:var(--backdrop);
+    backdrop-filter:var(--backdrop);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:1.25rem 1.25rem 1.5rem;
+  }
+  .solid{background:var(--surface-solid)}
 
-    *, *::before, *::after { box-sizing: border-box; }
-    html, body { min-height: 100%; }
+  h2.section{
+    margin:.25rem 0 1rem;
+    font-size:var(--fs-xl);
+    color:var(--secondary);
+    letter-spacing:-.01em;
+  }
+  h3{margin:1rem 0 .75rem;font-size:var(--fs-lg);color:var(--secondary);}
 
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background: var(--color-bg);
-      color: var(--color-text);
-      font-size: var(--fs-base);
-      line-height: 1.5;
-    }
+  .form-field{margin-bottom:1rem;}
+  label{display:block;margin:0 0 .35rem;font-weight:600;color:var(--secondary);}
+  input,select,button{
+    font-size:var(--fs-base);
+    border-radius:10px;
+    border:1px solid #e5e7eb;
+    padding:.75rem .9rem;
+    width:100%;
+    outline:none;
+    background:#fff;
+  }
+  input:focus,select:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(124,58,237,.12);
+  }
+  .help{color:var(--muted);font-size:var(--fs-sm);margin-top:.35rem;}
+  .error{color:var(--error);font-size:var(--fs-sm);margin-top:.35rem;}
 
-    a { color: var(--color-accent); text-decoration: none; }
-    a:hover, a:focus { text-decoration: underline; }
+  .actions{
+    display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;
+  }
+  .btn{
+    cursor:pointer;
+    border:none;
+    padding:.8rem 1rem;
+    border-radius:10px;
+    transition:transform .12s,box-shadow .12s,filter .12s;
+    min-height:44px;
+  }
+  .btn:active{transform:translateY(1px) scale(.997);}
+  .btn-primary{
+    background:var(--primary);
+    color:#000;
+    box-shadow:0 4px 12px -4px rgba(0,0,0,.2);
+  }
+  .btn-primary:hover{filter:brightness(1.05);}
+  .btn-outline{
+    background:transparent;
+    border:1px solid #e5e7eb;
+  }
+  .badge{
+    display:inline-block;
+    background:#fff;
+    color:#000;
+    border-radius:9999px;
+    padding:.15rem .5rem;
+    font-size:.75rem;
+    font-weight:600;
+    margin-right:.25rem;
+    border:1px solid rgba(0,0,0,.05);
+  }
 
-    h1, h2, h3 { line-height: 1.2; margin: 0 0 var(--space-3); }
-    .section-title { font-size: var(--fs-lg); color: var(--color-secondary); margin-bottom: var(--space-3); }
+  .status{
+    display:inline-flex;align-items:center;gap:.4rem;
+    font-size:.875rem;margin:.35rem 0 0;
+  }
+  .pill{
+    display:inline-block;padding:.12rem .5rem;border-radius:9999px;color:#fff;font-size:.75rem;font-weight:700;
+  }
+  .pill-open{background:#16a34a;}
+  .pill-pending{background:#f59e0b;color:#000;}
+  .pill-closed{background:#dc2626;}
 
-    .skip-link { position: absolute; left: -999px; top: -999px; }
-    .skip-link:focus { position: static; background: var(--color-accent); color: #fff; padding: var(--space-2) var(--space-3); }
+  .warn{
+    border-left:4px solid var(--primary);
+    background:#fff5e6;
+    color:var(--warn);
+    padding:.75rem 1rem;
+    border-radius:10px;
+    margin-bottom:1rem;
+    font-weight:600;
+  }
 
-    .site-header, .site-footer {
-      padding: var(--space-4);
-      background: var(--color-surface);
-      box-shadow: var(--shadow-sm);
-    }
-    .site-title {
-      font-size: var(--fs-xl);
-      text-align: center;
-      color: var(--color-primary);
-      margin: 0;
-    }
+  .budget-table{
+    width:100%;border-collapse:collapse;margin:1rem 0;border-radius:10px;overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .budget-table thead{background:var(--secondary);color:#fff;}
+  .budget-table th,.budget-table td{padding:.6rem .75rem;border:1px solid rgba(0,0,0,.04);}
+  .budget-table tbody tr:nth-child(odd){background:rgba(255,255,255,.5);}
 
-    /* LAYOUT: calculator first, maps last (bottom). On desktop, calc sticks right, maps span full width below */
-    .container {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: var(--space-5);
-      max-width: 1300px;
-      padding: var(--space-4);
-      margin: 0 auto;
-    }
-    @media (min-width: 1024px) {
-      .container {
-        grid-template-columns: 1fr 420px;
-        grid-template-areas:
-          "main calc"
-          "maps maps";
-        column-gap: var(--space-5);
-      }
-      .main-content   { grid-area: main; }
-      .calculator-wrap{ grid-area: calc; }
-      .maps           { grid-area: maps; }
-    }
-    @media (max-width: 1023px) {
-      .main-content, .calculator-wrap, .maps {
-        grid-area: auto;
-      }
-      .calculator-wrap { order: 1; }
-      .main-content    { order: 2; }
-      .maps            { order: 3; }
-    }
+  #result{
+    margin-top:1.25rem;
+    line-height:1.6;
+    white-space:pre-line;
+  }
+  #result strong{color:var(--secondary);}
+  .total-chip{
+    display:inline-block;background:var(--accent);
+    color:#fff;border-radius:9999px;padding:.35rem .8rem;
+    font-weight:700;margin:.2rem 0 0;
+  }
 
-    .map-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      overflow: hidden;
-      margin-bottom: var(--space-4);
-    }
-    .map-card__title {
-      padding: var(--space-3) var(--space-4);
-      background: var(--color-secondary);
-      color: #fff;
-      font-size: var(--fs-base);
-    }
-    .map-card__actions {
-      padding: var(--space-2) var(--space-4) 0;
-      font-size: var(--fs-sm);
-    }
-    .map-card iframe {
-      width: 100%;
-      height: 400px;
-      border: 0;
-      display: block;
-    }
+  #miniMap{
+    height:240px;margin-top:.65rem;border-radius:10px;border:1px solid rgba(0,0,0,.08);
+  }
+  .address-status{
+    white-space:pre-line;
+    background:#fffdf7;border:1px dashed rgba(0,0,0,.12);border-radius:10px;padding:.6rem .75rem;margin-top:.75rem;
+    font-size:.9rem;
+  }
 
-    .calculator {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      padding: var(--space-4);
-      position: sticky;
-      top: var(--space-4);
-      max-height: calc(100vh - 2 * var(--space-4));
-      overflow-y: auto;
-    }
-
-    .banner-warn {
-      border-left: 4px solid var(--color-primary);
-      background: #fff3da;
-      padding: var(--space-3);
-      margin-bottom: var(--space-4);
-      color: var(--color-warn);
-      font-weight: 600;
-    }
-
-    .budget-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: var(--space-4);
-      font-size: var(--fs-sm);
-    }
-    .budget-table th, .budget-table td {
-      border: 1px solid var(--color-border);
-      padding: var(--space-2) var(--space-3);
-      text-align: left;
-    }
-    .budget-table thead {
-      background: var(--color-secondary);
-      color: #fff;
-    }
-
-    .status-pill {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #fff;
-    }
-    .status-open { background: #2e7d32; }
-    .status-closed { background: #b71c1c; }
-    .status-pending { background: #f9a825; color: #000; }
-
-    .form-field { margin-bottom: var(--space-4); }
-    label {
-      display: block;
-      font-weight: 600;
-      color: var(--color-secondary);
-      margin-bottom: var(--space-2);
-    }
-
-    input, select, button { font-size: var(--fs-base); line-height: 1.2; }
-    input, select {
-      width: 100%;
-      padding: var(--space-3);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      background: transparent;
-      color: inherit;
-      transition: border-color var(--transition), box-shadow var(--transition);
-      min-height: 44px;
-    }
-    input:focus, select:focus, button:focus { outline: var(--focus-ring); outline-offset: 2px; }
-
-    .help { display: block; color: var(--color-text-muted); margin-top: var(--space-2); font-size: var(--fs-sm); }
-    .error { color: var(--color-error); font-size: var(--fs-sm); margin: var(--space-2) 0 0; }
-
-    .form-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
-
-    button {
-      border: none;
-      border-radius: var(--radius);
-      padding: var(--space-3) var(--space-4);
-      cursor: pointer;
-      transition: background var(--transition), transform var(--transition);
-      min-height: 44px;
-    }
-    button:active { transform: translateY(1px); }
-    .btn-primary { background: var(--color-primary); color: #000; }
-    .btn-primary:hover { background: #ffcc4a; color: #000; }
-    .btn-secondary { background: transparent; border: 1px solid var(--color-border); color: inherit; }
-    .btn-secondary:hover { background: var(--color-border); }
-
-    .result {
-      margin-top: var(--space-5);
-      padding: var(--space-4);
-      background: var(--color-surface);
-      border-left: 5px solid var(--color-primary);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      font-size: var(--fs-base);
-      line-height: 1.5;
-      white-space: pre-line;
-    }
-
-    .address-check {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-      padding: var(--space-4);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: var(--space-4);
-    }
-    .address-status {
-      margin-top: var(--space-3);
-      padding: var(--space-3);
-      border: 1px dashed var(--color-border);
-      border-radius: var(--radius);
-      font-size: var(--fs-sm);
-      background: #fff9ec;
-      white-space: pre-line;
-    }
-    .badge {
-      display: inline-block;
-      padding: 0.15rem 0.4rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin-right: 0.25rem;
-      color: #000;
-      background: var(--color-primary);
-    }
-
-    #miniMap {
-      height: 250px;
-      margin-top: var(--space-3);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius);
-    }
-
-    .hidden { display: none !important; }
-  </style>
+  .hidden{display:none !important;}
+</style>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to main content</a>
+<header>
+  <h1>SGIP Residential Solar &amp; Storage Equity – Incentive &amp; Eligibility Helper</h1>
+</header>
 
-  <header class="site-header" role="banner">
-    <h1 class="site-title">SGIP Residential Solar &amp; Storage Equity Calculator</h1>
-  </header>
+<main class="container">
+  <section class="main"></section>
 
-  <main id="main" class="container" role="main">
-    <!-- MAIN CONTENT (blank slot if you want to add explainer text later) -->
-    <section class="main-content" aria-label="intro">
-      <!-- You can add a hero / explainer here if you like -->
-    </section>
+  <!-- CALCULATOR (RIGHT) -->
+  <aside class="calc-wrap">
+    <div class="card solid" id="calcCard">
+      <h2 class="section">Calculator</h2>
 
-    <!-- CALCULATOR (RIGHT ON DESKTOP) -->
-    <aside class="calculator-wrap" aria-labelledby="calc-heading">
-      <div class="calculator">
-        <h2 id="calc-heading" class="section-title">Calculator</h2>
-
-        <!-- Budget & waitlist banner -->
-        <div id="waitlistBanner" class="banner-warn hidden">
-          ⚠️ High demand expected — your utility territory may **waitlist** applications once funds are claimed.
-        </div>
-
-        <table class="budget-table" aria-describedby="budget-note">
-          <thead>
-            <tr>
-              <th>Budget Bucket</th>
-              <th>Total Budget</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Storage Incentives</td>
-              <td>$280,000,000</td>
-            </tr>
-            <tr>
-              <td>Solar Incentives</td>
-              <td>$18,000,000</td>
-            </tr>
-          </tbody>
-        </table>
-        <p id="budget-note" class="help">
-          *Static totals shown. Territories may waitlist when demand exceeds remaining funds.
-        </p>
-
-        <!-- Utility + gating (auto-detected if you use PA polygons) -->
-        <div class="form-field">
-          <label for="utility">Utility Territory (auto-detected from address if possible)</label>
-          <select id="utility" name="utility" aria-describedby="utility-status">
-            <option value="">Select or auto-detect below</option>
-            <option value="PGE">PG&amp;E</option>
-            <option value="SCE">SCE</option>
-            <option value="SDGE">SDG&amp;E</option>
-            <option value="SCG">SoCalGas</option>
-            <option value="LADWP">LADWP</option>
-            <option value="OTHER">Other</option>
-          </select>
-          <div id="utility-status" class="help" style="margin-top: .5rem;">
-            Status: <span id="utilityStatusPill" class="status-pill status-pending">Select / detect</span>
-            <span id="utilityStatusText"></span>
-          </div>
-        </div>
-
-        <!-- Address checker -->
-        <section class="address-check" aria-labelledby="addr-title">
-          <h3 id="addr-title">Quick Address Check (DAC / Fire Tier 2-3 / PSPS / Utility)</h3>
-
-          <div class="form-field">
-            <label for="addressInput">Address</label>
-            <input id="addressInput" type="text" placeholder="123 Main St, City, CA" autocomplete="street-address" />
-          </div>
-
-          <div class="form-actions">
-            <button type="button" id="checkAddressBtn" class="btn-primary">Check Address</button>
-            <button type="button" id="clearAddressBtn" class="btn-secondary">Clear</button>
-          </div>
-
-          <div id="addressStatus" class="address-status hidden" role="status" aria-live="polite"></div>
-          <div id="miniMap" class="hidden" aria-label="Address preview map"></div>
-
-          <small class="help">
-            Uses ArcGIS REST queries. Results are advisory only—confirm with official tools.
-          </small>
-        </section>
-
-        <!-- Income auto-fill with HUD -->
-        <section class="address-check" aria-labelledby="hud-title">
-          <h3 id="hud-title">Income Auto‑Fill (HUD)</h3>
-
-          <div class="form-field">
-            <label for="hudZip">ZIP Code</label>
-            <input id="hudZip" type="text" inputmode="numeric" pattern="\\d{5}" placeholder="e.g., 90001" />
-          </div>
-
-          <div class="form-field">
-          <label for="hudHousehold">Household Size</label>
-            <input id="hudHousehold" type="number" min="1" step="1" value="4" />
-          </div>
-
-          <div class="form-field">
-            <label for="hudIncome">Annual Household Income ($)</label>
-            <input id="hudIncome" type="number" min="0" step="100" placeholder="e.g., 55000" />
-          </div>
-
-          <div class="form-actions">
-            <button type="button" id="hudFetchBtn" class="btn-primary">Fetch & auto‑fill AMI%</button>
-          </div>
-
-          <div id="hudStatus" class="help" role="status" aria-live="polite"></div>
-          <small class="help">
-            Requires a HUD USER API key. We approximate AMI% as income ÷ Median Family Income (MFI) × 100.
-          </small>
-        </section>
-
-        <form id="calcForm" novalidate data-testid="calc-form">
-          <!-- 1 -->
-          <div class="form-field" data-required>
-            <label for="customerType">1. Host Customer Class</label>
-            <select id="customerType" name="customerType" data-testid="customerType" required aria-describedby="customerType-help">
-              <option value="">Select type</option>
-              <option value="residential-single">Residential Single-Family</option>
-              <option value="residential-multi">Residential Multifamily</option>
-              <option value="commercial">Commercial/Business</option>
-              <option value="industrial">Industrial/Agricultural</option>
-            </select>
-            <small id="customerType-help" class="help">
-              Must be utility customer of record; rentals need explanation letter.
-            </small>
-            <p class="error" id="customerType-error" hidden></p>
-          </div>
-
-          <!-- 2 -->
-          <div class="form-field">
-            <label for="inDAC">2. Disadvantaged Community (DAC)?</label>
-            <select id="inDAC" name="inDAC" data-testid="inDAC">
-              <option value=""></option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          <!-- 3 -->
-          <div class="form-field">
-            <label for="inFire">3. Tier 2/3 Wildfire Threat Zone?</label>
-            <select id="inFire" name="inFire" data-testid="inFire">
-              <option value=""></option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          <!-- 4 -->
-          <div class="form-field">
-            <label for="inPSPS">4. Located in a PSPS Shutoff Area?</label>
-            <select id="inPSPS" name="inPSPS" data-testid="inPSPS" aria-describedby="inPSPS-help">
-              <option value=""></option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-            <small id="inPSPS-help" class="help">
-              Refer to CPUC PSPS lookup tool separate from this calculator.
-            </small>
-          </div>
-
-          <!-- 5 -->
-          <div class="form-field">
-            <label for="amiPercent">5. Household income as % of AMI (auto‑filled or manual)</label>
-            <input
-              type="number"
-              id="amiPercent"
-              name="amiPercent"
-              min="0"
-              max="300"
-              step="0.1"
-              placeholder="e.g., 60 (means 60% of AMI)"
-            />
-            <small class="help">
-              If ≤ 80%, you’re considered low‑income for SGIP Equity.
-            </small>
-          </div>
-
-          <!-- 6 -->
-          <div class="form-field">
-            <label for="careProgram">6. Participates in CARE / FERA / ESA?</label>
-            <select id="careProgram" name="careProgram" data-testid="careProgram">
-              <option value=""></option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-              <option value="unsure">Unsure</option>
-            </select>
-          </div>
-
-          <!-- 7 -->
-          <div class="form-field">
-            <label for="squareFootage">7. Home Square Footage (optional)</label>
-            <input
-              type="number"
-              id="squareFootage"
-              name="squareFootage"
-              min="0"
-              placeholder="e.g., 2000"
-              inputmode="numeric"
-              data-testid="squareFootage"
-            />
-            <small class="help">
-              If Solar PV size is blank, we’ll estimate using 0.0035&nbsp;kW per ft² (≈ 7&nbsp;kW for 2,000&nbsp;ft²).
-            </small>
-          </div>
-
-          <!-- 8 -->
-          <div class="form-field" data-required>
-            <label for="capacity">8. Storage Capacity (kWh)</label>
-            <input
-              type="number"
-              id="capacity"
-              name="capacity"
-              min="0"
-              step="0.1"
-              value="15"
-              placeholder="Default 15 kWh"
-              inputmode="decimal"
-              required
-              data-testid="capacity"
-            />
-            <p class="error" id="capacity-error" hidden></p>
-          </div>
-
-          <!-- 9 -->
-          <div class="form-field">
-            <label for="solarCapacity">9. Solar PV Capacity (kW)</label>
-            <input
-              type="number"
-              id="solarCapacity"
-              name="solarCapacity"
-              min="0"
-              step="0.1"
-              value="5"
-              placeholder="Default 5 kW (or leave blank)"
-              inputmode="decimal"
-              data-testid="solarCapacity"
-            />
-          </div>
-
-          <!-- 10 -->
-          <div class="form-field">
-            <label for="backup">10. Backup Capability?</label>
-            <select id="backup" name="backup" data-testid="backup">
-              <option value=""></option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" id="btnCheck" class="btn-primary" data-testid="calculate" disabled>
-              Calculate SGIP Incentive
-            </button>
-            <button type="button" id="btnExport" class="btn-secondary" disabled>
-              Export PDF summary
-            </button>
-            <button type="button" id="btnReset" class="btn-secondary" data-testid="reset">
-              Clear
-            </button>
-          </div>
-        </form>
-
-        <output
-          id="result"
-          class="result"
-          role="status"
-          aria-live="polite"
-          data-testid="result"
-          hidden
-        ></output>
+      <div id="waitlistBanner" class="warn hidden">
+        ⚠️ Possible waitlist due to high demand in IOU territories.
       </div>
-    </aside>
 
-    <!-- MAPS (BOTTOM) -->
-    <section class="maps" aria-labelledby="maps-heading">
-      <h2 id="maps-heading" class="section-title">Reference Maps &amp; Tools</h2>
+      <table class="budget-table" aria-describedby="budget-note">
+        <thead><tr><th>Bucket</th><th>Total Budget</th></tr></thead>
+        <tbody>
+          <tr><td>Storage Incentives</td><td>$280,000,000</td></tr>
+          <tr><td>Solar Incentives</td><td>$18,000,000</td></tr>
+        </tbody>
+      </table>
+      <p id="budget-note" class="help">*Static totals. Programs may waitlist as funds are subscribed.</p>
 
-      <article class="map-card" aria-labelledby="sb535-title">
-        <h3 id="sb535-title" class="map-card__title">SB&nbsp;535 Disadvantaged Communities Map</h3>
-        <p class="map-card__actions">
-          <a href="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/"
-             target="_blank" rel="noopener">🔎 Open full screen (best on mobile)</a>
-        </p>
-        <iframe
-          src="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/"
-          title="SB 535 Disadvantaged Communities Map"
-          loading="lazy"
-        ></iframe>
-      </article>
+      <!-- Utility (auto-detected) -->
+      <div class="form-field">
+        <label for="utility">Utility Territory (auto-detects after address check)</label>
+        <select id="utility">
+          <option value="">Select / auto-detect</option>
+          <option value="PGE">PG&amp;E</option>
+          <option value="SCE">SCE</option>
+          <option value="SDGE">SDG&amp;E</option>
+          <option value="SCG">SoCalGas</option>
+          <option value="LADWP">LADWP</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <div class="status">
+          Status:
+          <span id="utilityStatusPill" class="pill pill-pending">Pending</span>
+          <span id="utilityStatusText"></span>
+        </div>
+      </div>
 
-      <article class="map-card" aria-labelledby="capuc-title">
-        <h3 id="capuc-title" class="map-card__title">Community Air Protection (CAP UC) Map</h3>
-        <p class="map-card__actions">
-          <a href="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
-             target="_blank" rel="noopener">🔎 Open full screen (best on mobile)</a>
-        </p>
-        <iframe
-          src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
-          title="Community Air Protection (CAP UC) Map"
-          loading="lazy"
-        ></iframe>
-      </article>
+      <!-- Address checker -->
+      <section class="card" style="margin-top:1rem">
+        <h3>Quick Address Check (DAC / Fire Tier 2-3 / PSPS / Utility)</h3>
+        <div class="form-field">
+          <label for="addressInput">Address</label>
+          <input id="addressInput" placeholder="123 Main St, City, CA" autocomplete="street-address" />
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="checkAddressBtn">Check Address</button>
+          <button type="button" class="btn btn-outline" id="clearAddressBtn">Clear</button>
+        </div>
+        <div id="addressStatus" class="address-status hidden" role="status" aria-live="polite"></div>
+        <div id="miniMap" class="hidden"></div>
+        <p class="help">Uses ArcGIS REST. If you see errors, verify the URLs & PA layer config.</p>
+      </section>
 
-      <article class="map-card" aria-labelledby="sce-title">
-        <h3 id="sce-title" class="map-card__title">SCE Shutoff (Outage Status) Tool</h3>
-        <p class="map-card__actions">
-          <a href="https://www.sce.com/outages-safety/outage-center/check-outage-status"
-             target="_blank" rel="noopener">🔗 Check Public Safety Shutoff Status</a>
-        </p>
-      </article>
-    </section>
-  </main>
+      <!-- HUD AMI auto-fill -->
+      <section class="card" style="margin-top:1rem">
+        <h3>Income Auto‑Fill (HUD)</h3>
+        <div class="form-field">
+          <label for="hudZip">ZIP Code</label>
+          <input id="hudZip" type="text" inputmode="numeric" placeholder="e.g., 90001" />
+        </div>
+        <div class="form-field">
+          <label for="hudHousehold">Household Size</label>
+          <input id="hudHousehold" type="number" min="1" value="4" />
+        </div>
+        <div class="form-field">
+          <label for="hudIncome">Annual Household Income ($)</label>
+          <input id="hudIncome" type="number" min="0" step="100" placeholder="e.g., 55000" />
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="hudFetchBtn">Fetch & auto‑fill AMI%</button>
+        </div>
+        <div id="hudStatus" class="help"></div>
+      </section>
 
-  <footer class="site-footer" role="contentinfo">
-    <p>
-      <small>
-        Press <kbd>Enter</kbd> to calculate, <kbd>Esc</kbd> to clear. This tool is advisory only.
-      </small>
-    </p>
-  </footer>
+      <form id="calcForm" novalidate>
+        <div class="form-field">
+          <label for="customerType">1. Host Customer Class</label>
+          <select id="customerType" required>
+            <option value="">Select</option>
+            <option value="residential-single">Residential Single-Family</option>
+            <option value="residential-multi">Residential Multifamily</option>
+            <option value="commercial">Commercial/Business</option>
+            <option value="industrial">Industrial/Agricultural</option>
+          </select>
+          <div id="customerType-error" class="error hidden"></div>
+        </div>
 
-  <script>
-    /************************************************************
-     * CONFIG
-     ************************************************************/
-    const CONFIG = {
-      geocodeUrl:
-        "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+        <div class="form-field">
+          <label for="inDAC">2. Disadvantaged Community (DAC)?</label>
+          <select id="inDAC">
+            <option value=""></option><option value="yes">Yes</option><option value="no">No</option>
+          </select>
+        </div>
 
-      // SB 535 Disadvantaged Communities 2022 (layer 0)
-      sb535Url:
-        "https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query",
+        <div class="form-field">
+          <label for="inFire">3. Tier 2/3 Wildfire Threat Zone?</label>
+          <select id="inFire">
+            <option value=""></option><option value="yes">Yes</option><option value="no">No</option>
+          </select>
+        </div>
 
-      // CPUC Fire Threat Areas – Tier 3 (0) & Tier 2 (1)
-      wildfireTierUrls: [
-        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query",
-        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query"
-      ],
+        <div class="form-field">
+          <label for="inPSPS">4. Located in a PSPS Shutoff Area?</label>
+          <select id="inPSPS">
+            <option value=""></option><option value="yes">Yes</option><option value="no">No</option>
+          </select>
+        </div>
 
-      // Consolidated PSPS polygons (layer 0)
-      pspsUrl:
-        "https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query",
+        <div class="form-field">
+          <label for="amiPercent">5. Household income as % of AMI (auto‑filled or manual)</label>
+          <input id="amiPercent" type="number" min="0" max="300" step="0.1" placeholder="e.g., 60" />
+          <div class="help">If ≤ 80%, generally low‑income for SGIP Equity.</div>
+        </div>
 
-      // *** NEW: Program Administrator / Utility territories polygon ***
-      // Replace with your real FeatureServer layer that contains a PA / utility name field
-      paTerritoriesUrl:
-        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/SGIP_PA_Territories/FeatureServer/0/query",
+        <div class="form-field">
+          <label for="careProgram">6. Participates in CARE / FERA / ESA?</label>
+          <select id="careProgram">
+            <option value=""></option><option value="yes">Yes</option><option value="no">No</option><option value="unsure">Unsure</option>
+          </select>
+        </div>
 
-      // Field in the PA layer that holds the PA / utility code you want (PGE, SCE, SDGE, SCG, LADWP, OTHER)
-      paField: "UTILITY_CODE", // <-- change to match your schema
+        <div class="form-field">
+          <label for="squareFootage">7. Home Square Footage (optional)</label>
+          <input id="squareFootage" type="number" min="0" placeholder="e.g., 2000" />
+          <div class="help">If PV size blank, we estimate at 0.0035 kW/ft².</div>
+        </div>
 
-      // Program open dates
-      openDates: {
-        IOUs: "2025-05-20", // PG&E, SCE, SDG&E, SoCalGas
-        LADWP: null         // later 2025
-      },
+        <div class="form-field">
+          <label for="capacity">8. Storage Capacity (kWh)</label>
+          <input id="capacity" type="number" min="0" step="0.1" value="15" />
+          <div id="capacity-error" class="error hidden"></div>
+        </div>
 
-      // HUD API
-      hud: {
-        apiKey: "",           // <<<------- PASTE YOUR HUD USER API KEY HERE
-        year: 2024,
-        baseZipUrl: "https://www.huduser.gov/hudapi/public/il/v2/zip"
-      }
-    };
+        <div class="form-field">
+          <label for="solarCapacity">9. Solar PV Capacity (kW)</label>
+          <input id="solarCapacity" type="number" min="0" step="0.1" value="5" />
+        </div>
 
-    /************************************************************
-     * Program constants
-     ************************************************************/
-    const RATES = {
-      storagePerWh: 1.10,  // $/Wh (=$1,100/kWh)
-      solarPerkW: 3100     // $/kW
-    };
-    const KW_PER_SQFT = 0.0035;
-    const IOU_CODES = ["PGE", "SCE", "SDGE", "SCG"];
+        <div class="form-field">
+          <label for="backup">10. Backup Capability?</label>
+          <select id="backup">
+            <option value=""></option><option value="yes">Yes</option><option value="no">No</option>
+          </select>
+        </div>
 
-    /************************************************************
-     * Helpers
-     ************************************************************/
-    const SELECTORS = {
-      form: "#calcForm",
-      result: "#result",
-      btnReset: "#btnReset",
-      btnExport: "#btnExport",
-      btnCheck: "#btnCheck",
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" id="btnCheck" disabled>Calculate</button>
+          <button type="button" class="btn btn-outline" id="btnExport" disabled>Export PDF</button>
+          <button type="button" class="btn btn-outline" id="btnReset">Clear</button>
+        </div>
+      </form>
 
-      addressInput: "#addressInput",
-      checkAddressBtn: "#checkAddressBtn",
-      clearAddressBtn: "#clearAddressBtn",
-      addressStatus: "#addressStatus",
-      inDAC: "#inDAC",
-      inFire: "#inFire",
-      inPSPS: "#inPSPS",
-      miniMap: "#miniMap",
+      <div id="result" class="card hidden"></div>
+    </div>
+  </aside>
 
-      utility: "#utility",
-      utilityStatusPill: "#utilityStatusPill",
-      utilityStatusText: "#utilityStatusText",
-      waitlistBanner: "#waitlistBanner",
+  <!-- MAPS (BOTTOM) -->
+  <section class="maps card solid">
+    <h2 class="section">Reference Maps &amp; Tools</h2>
 
-      // HUD
-      hudZip: "#hudZip",
-      hudHousehold: "#hudHousehold",
-      hudIncome: "#hudIncome",
-      hudFetchBtn: "#hudFetchBtn",
-      hudStatus: "#hudStatus",
-      amiPercent: "#amiPercent"
-    };
+    <article class="card">
+      <h3>SB 535 Disadvantaged Communities Map</h3>
+      <p><a href="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/" target="_blank" rel="noopener">🔎 Open full screen</a></p>
+      <iframe
+        src="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/"
+        title="SB 535 DAC Map" loading="lazy" style="width:100%;height:400px;border:0"></iframe>
+    </article>
 
-    const qs = (sel, root = document) => root.querySelector(sel);
-    const money = n => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    const money2 = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const number1 = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    <article class="card">
+      <h3>Community Air Protection (CAP UC) Map</h3>
+      <p><a href="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2" target="_blank" rel="noopener">🔎 Open full screen</a></p>
+      <iframe
+        src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2"
+        title="CAP UC Map" loading="lazy" style="width:100%;height:400px;border:0"></iframe>
+    </article>
 
-    const ADDRESS_CACHE_KEY = "sgipAddressCache_v4";
-    function loadCache() { try { return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {}; } catch { return {}; } }
-    function saveCache(cache) { try { localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(cache)); } catch {} }
-    const addressCache = loadCache();
+    <article class="card">
+      <h3>SCE Shutoff (Outage Status) Tool</h3>
+      <p><a href="https://www.sce.com/outages-safety/outage-center/check-outage-status" target="_blank" rel="noopener">🔗 Check Public Safety Shutoff Status</a></p>
+    </article>
+  </section>
+</main>
 
-    function todayISO() { return new Date().toISOString().slice(0,10); }
-    function isAfterOrEqual(dateISO1, dateISO2) { return new Date(dateISO1) >= new Date(dateISO2); }
+<footer style="padding:2rem 1rem;text-align:center;color:#000;font-size:.9rem;">
+  This tool is advisory only. Confirm eligibility, rates, and program status with your SGIP Program Administrator.
+</footer>
 
-    function setUtilityStatus(utilityCode) {
-      const pill = qs(SELECTORS.utilityStatusPill);
-      const text = qs(SELECTORS.utilityStatusText);
-      const calcBtn = qs(SELECTORS.btnCheck);
-      const exportBtn = qs(SELECTORS.btnExport);
-      const waitlistBanner = qs(SELECTORS.waitlistBanner);
+<script>
+/* =======================
+   CONFIG
+   ======================= */
+const CONFIG = {
+  geocodeUrl: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
 
-      pill.className = "status-pill";
-      text.textContent = "";
+  sb535Url: "https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query",
+  wildfireTierUrls: [
+    "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query",
+    "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query"
+  ],
+  pspsUrl: "https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query",
 
-      const today = todayISO();
-      let open = false;
-      let pending = false;
+  // Set this to your polygon layer & field (or leave empty to skip auto-detect)
+  paTerritoriesUrl: "", // e.g. "https://.../FeatureServer/0/query"
+  paField: "UTILITY_CODE",
 
-      if (IOU_CODES.includes(utilityCode)) {
-        if (isAfterOrEqual(today, CONFIG.openDates.IOUs)) open = true; else pending = true;
-      } else if (utilityCode === "LADWP") {
-        pending = true;
-      } else if (utilityCode === "OTHER") {
-        open = true;
-      } else {
-        pending = true;
-      }
+  openDates: {
+    IOUs: "2025-05-20",
+    LADWP: null
+  },
 
-      if (open) {
-        pill.textContent = "OPEN";
-        pill.classList.add("status-open");
-        if (IOU_CODES.includes(utilityCode)) {
-          text.innerHTML = ` Opens: May 20, 2025 (now accepting).`;
-          waitlistBanner.classList.remove("hidden");
-        } else if (utilityCode === "OTHER") {
-          text.textContent = ` Check your program administrator for openings.`;
-          waitlistBanner.classList.add("hidden");
-        }
-        calcBtn.disabled = false;
-        exportBtn.disabled = true;
-      } else if (pending) {
-        pill.textContent = "PENDING";
-        pill.classList.add("status-pending");
-        if (IOU_CODES.includes(utilityCode)) {
-          text.innerHTML = ` Opens May 20, 2025.`;
-        } else if (utilityCode === "LADWP") {
-          text.innerHTML = ` LADWP opens later in 2025.`;
-        } else {
-          text.innerHTML = ` Select / detect a utility to continue.`;
-        }
-        calcBtn.disabled = true;
-        exportBtn.disabled = true;
-        waitlistBanner.classList.add("hidden");
-      } else {
-        pill.textContent = "CLOSED";
-        pill.classList.add("status-closed");
-        text.textContent = ` Not accepting applications.`;
-        calcBtn.disabled = true;
-        exportBtn.disabled = true;
-        waitlistBanner.classList.add("hidden");
-      }
-    }
+  hud: {
+    apiKey: "", // paste HUD key
+    year: 2024,
+    baseZipUrl: "https://www.huduser.gov/hudapi/public/il/v2/zip"
+  },
 
-    function validate(form) {
-      let valid = true;
+  timeouts: {
+    fetch: 15000
+  }
+};
 
-      const customerType = form.customerType;
-      const customerTypeError = qs("#customerType-error");
-      if (!customerType.value) {
-        customerTypeError.hidden = false;
-        customerTypeError.textContent = "Please select a customer type.";
-        valid = false;
-      } else {
-        customerTypeError.hidden = true;
-        customerTypeError.textContent = "";
-      }
+const RATES = { storagePerWh: 1.10, solarPerkW: 3100 };
+const KW_PER_SQFT = 0.0035;
+const IOU_CODES = ["PGE","SCE","SDGE","SCG"];
 
-      const capacity = parseFloat(form.capacity.value);
-      const capacityError = qs("#capacity-error");
-      if (isNaN(capacity) || capacity <= 0) {
-        capacityError.hidden = false;
-        capacityError.textContent = "Please provide a valid storage capacity (kWh).";
-        valid = false;
-      } else {
-        capacityError.hidden = true;
-        capacityError.textContent = "";
-      }
-      return valid;
-    }
+/* =======================
+   DOM SHORTCUTS
+   ======================= */
+const qs = (s, r=document) => r.querySelector(s);
+const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-    function equityEligibilityReason({ amiPercent, careProgram, inDAC }) {
-      if (typeof amiPercent === "number" && !isNaN(amiPercent) && amiPercent <= 80) return "Income ≤ 80% AMI";
-      if (careProgram === true) return "Participating in CARE/FERA/ESA";
-      if (inDAC === true) return "Located in a Disadvantaged Community (SB 535)";
-      return null;
-    }
+const els = {
+  form: qs("#calcForm"),
+  result: qs("#result"),
+  btnCheck: qs("#btnCheck"),
+  btnReset: qs("#btnReset"),
+  btnExport: qs("#btnExport"),
+  utility: qs("#utility"),
+  utilityPill: qs("#utilityStatusPill"),
+  utilityText: qs("#utilityStatusText"),
+  waitlistBanner: qs("#waitlistBanner"),
 
-    function calculate(payload) {
-      const {
-        squareFootage,
-        capacityInput,
-        solarCapacityInput,
-        amiPercent,
-        careProgram,
-        inDAC,
-        utilityCode
-      } = payload;
+  addressInput: qs("#addressInput"),
+  checkAddressBtn: qs("#checkAddressBtn"),
+  clearAddressBtn: qs("#clearAddressBtn"),
+  addressStatus: qs("#addressStatus"),
+  miniMap: qs("#miniMap"),
+  inDAC: qs("#inDAC"),
+  inFire: qs("#inFire"),
+  inPSPS: qs("#inPSPS"),
 
-      let capacity = parseFloat(capacityInput) || 15;
-      if (capacity <= 0) capacity = 15;
+  amiPercent: qs("#amiPercent"),
+  careProgram: qs("#careProgram"),
+  squareFootage: qs("#squareFootage"),
+  capacity: qs("#capacity"),
+  solarCapacity: qs("#solarCapacity"),
 
-      let solarCap = parseFloat(solarCapacityInput) || 0;
-      let autoPvKwUsed = null;
+  customerType: qs("#customerType"),
+  customerTypeErr: qs("#customerType-error"),
+  capacityErr: qs("#capacity-error"),
 
-      if (!solarCap && squareFootage > 0) {
-        autoPvKwUsed = Math.max(1, squareFootage * KW_PER_SQFT);
-        solarCap = parseFloat(autoPvKwUsed.toFixed(1));
-      }
+  hudZip: qs("#hudZip"),
+  hudHousehold: qs("#hudHousehold"),
+  hudIncome: qs("#hudIncome"),
+  hudFetchBtn: qs("#hudFetchBtn"),
+  hudStatus: qs("#hudStatus")
+};
 
-      const storageIncentive = capacity * 1000 * RATES.storagePerWh;
-      const solarIncentive = solarCap * RATES.solarPerkW;
-      const totalIncentive = storageIncentive + solarIncentive;
+const ADDRESS_CACHE_KEY = "sgip_addr_v5";
+let addressCache = {};
+try{ addressCache = JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {}; }catch{}
 
-      const reason = equityEligibilityReason({ amiPercent, careProgram, inDAC });
-      const equityEligible = !!reason;
+/* =======================
+   UTIL / FORMAT
+   ======================= */
+const money0 = n => n.toLocaleString(undefined,{maximumFractionDigits:0});
+const money2 = n => n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const num1   = n => n.toLocaleString(undefined,{maximumFractionDigits:1});
 
-      const possibleWaitlist = IOU_CODES.includes(utilityCode);
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function isAfterOrEqual(a,b){ return new Date(a) >= new Date(b); }
 
-      let explanation = `
-<strong>SGIP Residential Solar & Storage Equity – Estimated Incentive</strong>
-
-<strong>Program status</strong>
-• Utility: ${utilityCode || "—"}  
-• ${possibleWaitlist ? "⚠️ Possible waitlist due to high demand." : "Status will vary by PA"}  
-
-<strong>Your eligibility (auto-evaluated)</strong>
-• Equity-eligible: ${equityEligible ? "Yes" : "No"}${equityEligible ? ` (Reason: ${reason})` : ""}  
-• AMI %: ${typeof amiPercent === "number" && !isNaN(amiPercent) ? amiPercent.toFixed(1) + "%" : "not provided"}  
-• CARE/FERA/ESA: ${careProgram ? "Yes" : "No/Unknown"}  
-• DAC: ${inDAC ? "Yes" : "No"}  
-
-<strong>Your inputs / assumptions</strong>
-• Storage: ${number1(capacity)} kWh → $${money(storageIncentive)} @ $${money2(RATES.storagePerWh)} /Wh  
-${solarCap > 0 ? `• Solar: ${number1(solarCap)} kW → $${money(solarIncentive)} @ $${money(RATES.solarPerkW)} /kW  ` : ""}${
-autoPvKwUsed !== null
-  ? `\n• PV size estimated from ${squareFootage.toLocaleString()} ft² @ 0.0035 kW/ft²`
-  : ""
+function withTimeout(promise, ms, label){
+  const t = new Promise((_,rej)=>setTimeout(()=>rej(new Error(label+" timeout")),ms));
+  return Promise.race([promise,t]);
 }
 
-<strong>Total SGIP incentives (est.): $${money(totalIncentive)}</strong>
+/* =======================
+   UTILITY STATUS
+   ======================= */
+function setUtilityStatus(code){
+  const pill = els.utilityPill;
+  const txt = els.utilityText;
 
-<strong>Advanced Payment</strong>
-• You may be able to receive **50% upfront** through the SGIP Advanced Payment option, reducing out-of-pocket costs until project completion.
+  pill.className = "pill";
+  let open=false,pending=false;
+  const td = todayISO();
 
-<strong>Disclaimers</strong>
-• This is a planning tool only; confirm final eligibility, rates, and program status with your SGIP Program Administrator.  
-• Incentive rates and budgets can change; applications may be waitlisted once funds are fully subscribed.
-`;
+  if(IOU_CODES.includes(code)){
+    if(isAfterOrEqual(td,CONFIG.openDates.IOUs)) open=true; else pending=true;
+  }else if(code==="LADWP"){
+    pending = true;
+  }else if(code==="OTHER"){
+    open = true;
+  }else{
+    pending=true;
+  }
 
-      return { explanation };
+  if(open){
+    pill.textContent = "OPEN";
+    pill.classList.add("pill-open");
+    txt.textContent = IOU_CODES.includes(code) ? "May 20, 2025 (accepting)" : "Check PA for dates.";
+    els.btnCheck.disabled = false;
+    els.waitlistBanner.classList.toggle("hidden", !IOU_CODES.includes(code));
+  }else if(pending){
+    pill.textContent = "PENDING";
+    pill.classList.add("pill-pending");
+    txt.textContent = code==="LADWP" ? "LADWP opens later in 2025." : "Select / detect a utility to continue.";
+    els.btnCheck.disabled = true;
+    els.waitlistBanner.classList.add("hidden");
+  }else{
+    pill.textContent = "CLOSED";
+    pill.classList.add("pill-closed");
+    txt.textContent = "Not accepting applications.";
+    els.btnCheck.disabled = true;
+    els.waitlistBanner.classList.add("hidden");
+  }
+  els.btnExport.disabled = true;
+}
+
+/* =======================
+   VALIDATION
+   ======================= */
+function validate(){
+  let ok=true;
+  if(!els.customerType.value){
+    els.customerTypeErr.textContent = "Please select a customer type.";
+    els.customerTypeErr.classList.remove("hidden");
+    ok=false;
+  }else{
+    els.customerTypeErr.classList.add("hidden");
+    els.customerTypeErr.textContent="";
+  }
+  const cap = parseFloat(els.capacity.value);
+  if(!Number.isFinite(cap) || cap<=0){
+    els.capacityErr.textContent="Please provide a valid kWh (>0).";
+    els.capacityErr.classList.remove("hidden");
+    ok=false;
+  }else{
+    els.capacityErr.classList.add("hidden");
+    els.capacityErr.textContent="";
+  }
+  return ok;
+}
+
+/* =======================
+   ELIGIBILITY
+   ======================= */
+function eligibilityReason({amiPercent,care,inDAC}){
+  if(typeof amiPercent==="number" && !isNaN(amiPercent) && amiPercent<=80) return "Income ≤ 80% AMI";
+  if(care===true) return "CARE/FERA/ESA participation";
+  if(inDAC===true) return "Address in Disadvantaged Community";
+  return null;
+}
+
+/* =======================
+   CALCULATE
+   ======================= */
+function calculate(){
+  const squareFt = parseFloat(els.squareFootage.value) || 0;
+
+  let cap = parseFloat(els.capacity.value);
+  if(!Number.isFinite(cap) || cap<=0) cap = 15;
+
+  let solar = parseFloat(els.solarCapacity.value);
+  if(!Number.isFinite(solar) || solar<0) solar = 0;
+
+  let autoPv = null;
+  if(solar===0 && squareFt>0){
+    autoPv = Math.max(1, squareFt * KW_PER_SQFT);
+    solar = parseFloat(autoPv.toFixed(1));
+  }
+
+  const amiTxt = els.amiPercent.value.trim();
+  const amiPercent = amiTxt ? Number(amiTxt) : null;
+  const care = els.careProgram.value==="yes";
+  const inDAC = els.inDAC.value==="yes";
+
+  const storageIncentive = Math.round(cap * 1000 * RATES.storagePerWh); // kWh -> Wh
+  const solarIncentive = Math.round(solar * RATES.solarPerkW);
+  const total = storageIncentive + solarIncentive;
+
+  const reason = eligibilityReason({amiPercent,care,inDAC});
+  const equity = !!reason;
+
+  const util = els.utility.value;
+  const waitlist = IOU_CODES.includes(util);
+
+  return {
+    util, waitlist, equity, reason,
+    cap, solar, autoPv, squareFt,
+    storageIncentive, solarIncentive, total,
+    amiPercent, care, inDAC
+  };
+}
+
+function renderResult(d){
+  const res = els.result;
+  const lines = [];
+
+  lines.push(`**Program status**`);
+  lines.push(`• Utility: ${d.util || "—"}`);
+  if(d.waitlist) lines.push(`• ⚠️ Possible waitlist due to high demand.`);
+  lines.push("");
+
+  lines.push(`**Your eligibility (auto‑evaluated)**`);
+  lines.push(`• Equity‑eligible: ${d.equity ? "Yes" : "No"}${d.equity ? ` (Reason: ${d.reason})` : ""}`);
+  lines.push(`• AMI %: ${typeof d.amiPercent==="number"&&!isNaN(d.amiPercent)? d.amiPercent.toFixed(1)+"%" : "not provided"}`);
+  lines.push(`• CARE/FERA/ESA: ${d.care ? "Yes" : "No/Unknown"}`);
+  lines.push(`• DAC: ${d.inDAC ? "Yes" : "No"}`);
+  lines.push("");
+
+  lines.push(`**Your inputs / assumptions**`);
+  lines.push(`• Storage: ${num1(d.cap)} kWh → $${money0(d.storageIncentive)} @ $${money2(RATES.storagePerWh)} /Wh`);
+  if(d.solar>0) lines.push(`• Solar: ${num1(d.solar)} kW → $${money0(d.solarIncentive)} @ $${money0(RATES.solarPerkW)} /kW`);
+  if(d.autoPv) lines.push(`• PV size auto‑estimated from ${squareFtFmt(d.squareFt)} ft² @ 0.0035 kW/ft²`);
+
+  lines.push("");
+  lines.push(`**Total SGIP incentives (est.)**`);
+  lines.push(`$${money0(d.total)}`);
+
+  lines.push("");
+  lines.push(`**Advanced Payment**`);
+  lines.push(`• Up to 50% upfront through the SGIP Advanced Payment option.`);
+
+  lines.push("");
+  lines.push(`**Disclaimers**`);
+  lines.push(`• Advisory only; confirm with your SGIP Program Administrator.`);
+  lines.push(`• Incentive rates/budgets can change; waitlists may occur.`);
+
+  const html = markdownishToHTML(lines.join("\n"));
+
+  res.innerHTML = `
+    <h3 style="margin-top:0;color:var(--secondary)">SGIP Residential Solar & Storage Equity – Estimated Incentive</h3>
+    <div>${html}</div>
+    <div class="total-chip">Total: $${money0(d.total)}</div>
+  `;
+  res.classList.remove("hidden");
+  els.btnExport.disabled = false;
+  res.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function squareFtFmt(v){ return Number(v).toLocaleString(); }
+
+// ultra-lite markdown-ish (bold only)
+function markdownishToHTML(txt){
+  return txt
+   .replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")
+   .replace(/\n/g,"<br>");
+}
+
+/* =======================
+   ARCGIS HELPERS
+   ======================= */
+async function fetchJSON(url){
+  return withTimeout(fetch(url), CONFIG.timeouts.fetch, url).then(r=>{
+    if(!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+    return r.json();
+  });
+}
+
+async function geocodeAddress(addr){
+  const p = new URLSearchParams({
+    SingleLine: addr,
+    outFields: "Match_addr,Addr_type",
+    f: "json"
+  });
+  const url = `${CONFIG.geocodeUrl}?${p}`;
+  const j = await fetchJSON(url);
+  const c = j.candidates?.[0];
+  if(!c) throw new Error("No geocode candidate found");
+  return {x:c.location.x, y:c.location.y, score:c.score, address:c.address};
+}
+
+async function pointInLayer(point, url){
+  if(!url) return null;
+  const p = new URLSearchParams({
+    f:"json",
+    geometry: JSON.stringify({x:point.x,y:point.y, spatialReference:{wkid:4326}}),
+    geometryType:"esriGeometryPoint",
+    inSR:"4326",
+    spatialRel:"esriSpatialRelIntersects",
+    outFields:"*",
+    returnGeometry:"false"
+  });
+  const j = await fetchJSON(`${url}?${p}`);
+  return (j.features||[])[0] || null;
+}
+
+async function pointInAnyLayer(point, urls=[]){
+  for(const u of urls){
+    try{
+      const f = await pointInLayer(point,u);
+      if(f) return f;
+    }catch(e){
+      console.warn("Layer failed",u,e);
+    }
+  }
+  return null;
+}
+
+async function detectUtility(point){
+  if(!CONFIG.paTerritoriesUrl) return null;
+  try{
+    const f = await pointInLayer(point, CONFIG.paTerritoriesUrl);
+    if(!f) return null;
+    const code = f.attributes?.[CONFIG.paField];
+    return code || null;
+  }catch(e){
+    console.warn("PA detect failed", e);
+    return null;
+  }
+}
+
+/* =======================
+   HUD
+   ======================= */
+async function fetchHud(zip, year, key){
+  if(!key) throw new Error("Missing HUD API key in CONFIG.hud.apiKey");
+  const url = `${CONFIG.hud.baseZipUrl}/${zip}?year=${year}`;
+  const r = await withTimeout(fetch(url,{headers:{Authorization:`Bearer ${key}`}}), CONFIG.timeouts.fetch, "HUD");
+  if(!r.ok) throw new Error(`HUD HTTP ${r.status}`);
+  return r.json();
+}
+function hudPctFromMFI(json, income){
+  const d = json?.data?.[0];
+  if(!d || typeof d.medianFamilyIncome!=="number") throw new Error("No MFI in HUD response");
+  return (income / d.medianFamilyIncome) * 100;
+}
+
+/* =======================
+   MINI MAP
+   ======================= */
+let miniMap, miniMarker;
+function updateMap(lat,lon){
+  els.miniMap.classList.remove("hidden");
+  if(!miniMap){
+    miniMap = L.map(els.miniMap).setView([lat,lon],14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19, attribution:"&copy; OpenStreetMap"
+    }).addTo(miniMap);
+    miniMarker = L.marker([lat,lon]).addTo(miniMap);
+  }else{
+    miniMap.setView([lat,lon],14);
+    miniMarker.setLatLng([lat,lon]);
+  }
+}
+
+/* =======================
+   EXPORT
+   ======================= */
+function exportPDF(){
+  const w = window.open("", "_blank");
+  w.document.write(`
+    <html><head><meta charset="utf-8"><title>SGIP Incentive Summary</title>
+      <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;color:#111;line-height:1.6;}
+        h1{font-size:1.4rem;margin:0 0 1rem;color:#0f172a;}
+        .muted{color:#666;font-size:.875rem;margin-top:1.5rem;}
+      </style>
+    </head>
+    <body>
+      <h1>SGIP Incentive Summary</h1>
+      ${els.result.innerHTML}
+      <div class="muted">Advisory only. Confirm with your Program Administrator.</div>
+    </body></html>
+  `);
+  w.document.close(); w.focus(); w.print();
+}
+
+/* =======================
+   INIT
+   ======================= */
+document.addEventListener("DOMContentLoaded",()=>{
+  setUtilityStatus("");
+
+  els.utility.addEventListener("change",()=>setUtilityStatus(els.utility.value));
+
+  els.hudFetchBtn.addEventListener("click", async ()=>{
+    els.hudStatus.textContent="";
+    const zip = els.hudZip.value.trim();
+    const income = parseFloat(els.hudIncome.value);
+    if(zip.length!==5){ els.hudStatus.textContent="Enter a 5-digit ZIP."; return; }
+    if(!Number.isFinite(income) || income<=0){ els.hudStatus.textContent="Enter valid income."; return; }
+    try{
+      els.hudStatus.textContent="Fetching HUD...";
+      const json = await fetchHud(zip, CONFIG.hud.year, CONFIG.hud.apiKey);
+      const pct = hudPctFromMFI(json, income);
+      els.amiPercent.value = pct.toFixed(1);
+      els.hudStatus.textContent = `Estimated AMI% = ${pct.toFixed(1)}% (income ÷ MFI × 100).`;
+    }catch(e){
+      console.error(e);
+      els.hudStatus.textContent = `HUD error: ${e.message}`;
+    }
+  });
+
+  els.checkAddressBtn.addEventListener("click", async ()=>{
+    const raw = els.addressInput.value.trim();
+    if(!raw){
+      setAddrStatus("Enter an address first."); return;
+    }
+    const key = raw.toLowerCase();
+    if(addressCache[key]){
+      useCached(addressCache[key]);
+      return;
     }
 
-    /* ---------- HUD API ---------- */
-    async function fetchHudAMIByZip(zip, year, apiKey) {
-      if (!apiKey) throw new Error("No HUD API key configured in CONFIG.hud.apiKey");
-      const url = `${CONFIG.hud.baseZipUrl}/${zip}?year=${year}`;
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
-      if (!res.ok) throw new Error(`HUD API error: ${res.status}`);
-      const json = await res.json();
-      return json;
-    }
+    try{
+      setAddrStatus("Geocoding address…");
+      const pt = await geocodeAddress(raw);
+      updateMap(pt.y, pt.x);
 
-    function computeAmiPercentFromHudResponse(json, income) {
-      const d = json?.data?.[0];
-      if (!d || typeof d.medianFamilyIncome !== "number") {
-        throw new Error("Could not find Median Family Income in HUD response.");
-      }
-      const mfi = d.medianFamilyIncome;
-      return (income / mfi) * 100;
-    }
+      // Layer checks
+      const statuses = [];
+      let dac=false,fire=false,psps=false,utility=null;
 
-    /* ---------- ArcGIS helpers ---------- */
-    async function geocodeAddress(address) {
-      const params = new URLSearchParams({
-        SingleLine: address,
-        outFields: "Match_addr,Addr_type",
-        f: "json",
-      });
+      setAddrStatus("Checking DAC / Fire / PSPS layers…");
+      try{
+        dac = !!await pointInLayer(pt, CONFIG.sb535Url);
+        statuses.push(`DAC: ${dac?"Yes":"No"}`);
+      }catch(e){ statuses.push("DAC check failed: "+e.message); }
+      try{
+        fire = !!await pointInAnyLayer(pt, CONFIG.wildfireTierUrls);
+        statuses.push(`Fire 2/3: ${fire?"Yes":"No"}`);
+      }catch(e){ statuses.push("Fire check failed: "+e.message); }
+      try{
+        psps = !!await pointInLayer(pt, CONFIG.pspsUrl);
+        statuses.push(`PSPS: ${psps?"Yes":"No"}`);
+      }catch(e){ statuses.push("PSPS check failed: "+e.message); }
 
-      const url = `${CONFIG.geocodeUrl}?${params.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Geocoding failed");
-      const json = await res.json();
-
-      const candidate = (json.candidates || [])[0];
-      if (!candidate) throw new Error("No match found");
-      return {
-        x: candidate.location.x,
-        y: candidate.location.y,
-        score: candidate.score,
-        matchAddress: candidate.address,
-      };
-    }
-
-    async function pointInLayer({ x, y }, layerQueryUrl) {
-      const params = new URLSearchParams({
-        f: "json",
-        geometry: JSON.stringify({ x, y, spatialReference: { wkid: 4326 } }),
-        geometryType: "esriGeometryPoint",
-        inSR: "4326",
-        spatialRel: "esriSpatialRelIntersects",
-        outFields: "*",
-        returnGeometry: "false",
-      });
-
-      const res = await fetch(`${layerQueryUrl}?${params.toString()}`);
-      if (!res.ok) throw new Error(`Layer query failed: ${res.status} ${layerQueryUrl}`);
-      const json = await res.json();
-      return (json.features || []).length > 0 ? json.features[0] : null;
-    }
-
-    async function pointInAnyLayer(point, urls) {
-      for (const url of urls) {
-        const f = await pointInLayer(point, url);
-        if (f) return f;
-      }
-      return null;
-    }
-
-    async function detectUtilityFromPoint(point) {
-      if (!CONFIG.paTerritoriesUrl) return null;
-
-      const params = new URLSearchParams({
-        f: "json",
-        geometry: JSON.stringify({ x: point.x, y: point.y, spatialReference: { wkid: 4326 } }),
-        geometryType: "esriGeometryPoint",
-        inSR: "4326",
-        spatialRel: "esriSpatialRelIntersects",
-        outFields: "*",
-        returnGeometry: "false"
-      });
-
-      const url = `${CONFIG.paTerritoriesUrl}?${params.toString()}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`PA boundary query failed: ${res.status}`);
-      const json = await res.json();
-      const feat = json.features?.[0];
-      if (!feat) return null;
-
-      const code = feat.attributes?.[CONFIG.paField];
-      return code || null;
-    }
-
-    /* ---------- tiny map ---------- */
-    let miniMap;
-    let miniMarker;
-    function updateMiniMap(lat, lon) {
-      const el = qs(SELECTORS.miniMap);
-      el.classList.remove("hidden");
-
-      if (!miniMap) {
-        miniMap = L.map(el).setView([lat, lon], 14);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap contributors"
-        }).addTo(miniMap);
-        miniMarker = L.marker([lat, lon]).addTo(miniMap);
-      } else {
-        miniMap.setView([lat, lon], 14);
-        if (miniMarker) miniMarker.setLatLng([lat, lon]); else miniMarker = L.marker([lat, lon]).addTo(miniMap);
-      }
-    }
-
-    function setAddressStatus(message, badges = []) {
-      const box = qs(SELECTORS.addressStatus);
-      box.innerHTML = `
-        ${badges.map(b => `<span class="badge">${b}</span>`).join(" ")}
-        ${message}
-      `;
-      box.classList.remove("hidden");
-    }
-
-    function exportPDF(html) {
-      const w = window.open("", "_blank");
-      w.document.write(`
-        <html>
-          <head>
-            <title>SGIP Incentive Summary</title>
-            <meta charset="utf-8" />
-            <style>
-              body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #111; }
-              h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #003c71; }
-              .section { margin-bottom: 1.25rem; }
-              .muted { color: #666; font-size: 0.875rem; margin-top: 2rem; }
-              strong { color: #003c71; }
-            </style>
-          </head>
-          <body>
-            <h1>SGIP Incentive Summary</h1>
-            <div class="section">
-              ${html}
-            </div>
-            <div class="muted">
-              This summary is advisory only. Confirm eligibility, rates, and program status with your Program Administrator.
-            </div>
-          </body>
-        </html>
-      `);
-      w.document.close();
-      w.focus();
-      w.print();
-    }
-
-    /************************************************************
-     * DOM glue
-     ************************************************************/
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = qs(SELECTORS.form);
-      const resultEl = qs(SELECTORS.result);
-      const resetBtn = qs(SELECTORS.btnReset);
-      const exportBtn = qs(SELECTORS.btnExport);
-      const calcBtn = qs(SELECTORS.btnCheck);
-
-      const utilitySelect = qs(SELECTORS.utility);
-      const addressInput = qs(SELECTORS.addressInput);
-      const checkBtn = qs(SELECTORS.checkAddressBtn);
-      const clearBtn = qs(SELECTORS.clearAddressBtn);
-      const statusBox = qs(SELECTORS.addressStatus);
-
-      const inDACSelect = qs(SELECTORS.inDAC);
-      const inFireSelect = qs(SELECTORS.inFire);
-      const inPSPSSelect = qs(SELECTORS.inPSPS);
-
-      const hudZip = qs(SELECTORS.hudZip);
-      const hudHousehold = qs(SELECTORS.hudHousehold);
-      const hudIncome = qs(SELECTORS.hudIncome);
-      const hudFetchBtn = qs(SELECTORS.hudFetchBtn);
-      const hudStatus = qs(SELECTORS.hudStatus);
-      const amiPercentInput = qs(SELECTORS.amiPercent);
-
-      // Initialize
-      setUtilityStatus("");
-
-      utilitySelect.addEventListener("change", () => {
-        setUtilityStatus(utilitySelect.value);
-      });
-
-      // HUD AMI auto-fill
-      hudFetchBtn.addEventListener("click", async () => {
-        hudStatus.textContent = "";
-        const zip = hudZip.value.trim();
-        const hhSize = parseInt(hudHousehold.value, 10);
-        const income = parseFloat(hudIncome.value);
-
-        if (!zip || zip.length !== 5) { hudStatus.textContent = "Please enter a 5-digit ZIP code."; return; }
-        if (!hhSize || hhSize <= 0)   { hudStatus.textContent = "Please enter a valid household size."; return; }
-        if (isNaN(income) || income <= 0) { hudStatus.textContent = "Please enter a valid annual household income."; return; }
-
-        try {
-          hudStatus.textContent = "Fetching HUD income limits...";
-          const json = await fetchHudAMIByZip(zip, CONFIG.hud.year, CONFIG.hud.apiKey);
-          const pct = computeAmiPercentFromHudResponse(json, income);
-          amiPercentInput.value = pct.toFixed(1);
-          hudStatus.textContent = `Estimated AMI% = ${pct.toFixed(1)}%. (income ÷ MFI × 100)`;
-        } catch (e) {
-          console.error(e);
-          hudStatus.textContent = `HUD lookup failed: ${e.message}`;
-        }
-      });
-
-      // Address checks (now also auto-detect utility)
-      checkBtn.addEventListener("click", async () => {
-        const raw = addressInput.value.trim();
-        if (!raw) {
-          setAddressStatus("Please enter an address first.");
-          return;
-        }
-        const address = raw.toLowerCase();
-
-        // From cache?
-        if (addressCache[address]) {
-          const c = addressCache[address];
-          setAddressStatus(
-            `[cached]\nUtility: ${c.utility || "—"}\nDAC: ${c.dac ? "Yes" : "No"} • Fire Tier 2/3: ${c.fire ? "Yes" : "No"} • PSPS: ${c.psps ? "Yes" : "No"}\n(${c.lat.toFixed(5)}, ${c.lon.toFixed(5)})`,
-            [
-              c.utility || "",
-              c.dac ? "DAC" : "",
-              c.fire ? "Tier 2/3" : "",
-              c.psps ? "PSPS" : ""
-            ].filter(Boolean)
-          );
-          inDACSelect.value = c.dac ? "yes" : "no";
-          inFireSelect.value = c.fire ? "yes" : "no";
-          inPSPSSelect.value = c.psps ? "yes" : "no";
-          if (c.utility) {
-            utilitySelect.value = c.utility;
-            setUtilityStatus(c.utility);
+      try{
+        if(CONFIG.paTerritoriesUrl){
+          setAddrStatus("Detecting Program Administrator territory…");
+          utility = await detectUtility(pt);
+          if(utility){
+            els.utility.value = utility;
+            setUtilityStatus(utility);
           }
-          updateMiniMap(c.lat, c.lon);
-          return;
+          statuses.push(`Utility: ${utility || "—"}`);
         }
+      }catch(e){
+        statuses.push("Utility detect failed: "+e.message);
+      }
 
-        setAddressStatus("Geocoding address...");
-        try {
-          const point = await geocodeAddress(raw);
-          const lat = point.y;
-          const lon = point.x;
+      // reflect in selects
+      els.inDAC.value = dac ? "yes":"no";
+      els.inFire.value = fire ? "yes":"no";
+      els.inPSPS.value = psps ? "yes":"no";
 
-          setAddressStatus("Checking DAC / Fire / PSPS layers...");
-          const [dacFeature, fireFeature, pspsFeature] = await Promise.all([
-            CONFIG.sb535Url ? pointInLayer(point, CONFIG.sb535Url) : null,
-            CONFIG.wildfireTierUrls?.length ? pointInAnyLayer(point, CONFIG.wildfireTierUrls) : null,
-            CONFIG.pspsUrl ? pointInLayer(point, CONFIG.pspsUrl) : null,
-          ]);
+      setAddrStatus(`(${pt.y.toFixed(5)}, ${pt.x.toFixed(5)})\n`+statuses.join("\n"),
+        [utility||"", dac?"DAC":"", fire?"Tier 2/3":"", psps?"PSPS":""].filter(Boolean));
 
-          const dac = !!dacFeature;
-          const fire = !!fireFeature;
-          const psps = !!pspsFeature;
+      addressCache[key]={lat:pt.y,lon:pt.x,dac,fire,psps,utility};
+      try{ localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(addressCache)); }catch{}
 
-          inDACSelect.value = dac ? "yes" : "no";
-          inFireSelect.value = fire ? "yes" : "no";
-          inPSPSSelect.value = psps ? "yes" : "no";
+    }catch(e){
+      console.error(e);
+      setAddrStatus(
+        "Address check failed.\n"+
+        "Step failed: "+(e.message||e)+
+        "\nConfirm ArcGIS URLs, PA URL/field, and CORS/network in DevTools."
+      );
+    }
+  });
 
-          // Auto-detect PA / Utility
-          let utilDetected = null;
-          if (CONFIG.paTerritoriesUrl) {
-            setAddressStatus("Detecting Program Administrator / Utility territory...");
-            try {
-              utilDetected = await detectUtilityFromPoint(point);
-              if (utilDetected) {
-                utilitySelect.value = utilDetected;
-                setUtilityStatus(utilDetected);
-              }
-            } catch (e) {
-                console.warn("PA detection failed:", e);
-            }
-          }
+  els.clearAddressBtn.addEventListener("click", ()=>{
+    els.addressInput.value="";
+    els.addressStatus.classList.add("hidden");
+    els.addressStatus.innerHTML="";
+    els.miniMap.classList.add("hidden");
+    els.inDAC.value="";
+    els.inFire.value="";
+    els.inPSPS.value="";
+  });
 
-          const badges = [];
-          if (utilDetected) badges.push(utilDetected);
-          if (dac) badges.push("DAC");
-          if (fire) badges.push("Tier 2/3");
-          if (psps) badges.push("PSPS");
+  els.form.addEventListener("submit",(e)=>{
+    e.preventDefault();
+    const util = els.utility.value;
+    const open = (IOU_CODES.includes(util) && isAfterOrEqual(todayISO(),CONFIG.openDates.IOUs)) || util==="OTHER";
+    if(!open){
+      alert("Selected utility not open yet for this program.");
+      return;
+    }
+    if(!validate()){ els.result.classList.add("hidden"); return; }
+    const data = calculate();
+    renderResult(data);
+  });
 
-          setAddressStatus(
-            `Found coordinates: (${lat.toFixed(5)}, ${lon.toFixed(5)})\nUtility: ${utilDetected || "—"}\nDAC: ${dac ? "Yes" : "No"} • Fire Tier 2/3: ${fire ? "Yes" : "No"} • PSPS: ${psps ? "Yes" : "No"}.`,
-            badges
-          );
+  els.btnExport.addEventListener("click", ()=> exportPDF());
 
-          updateMiniMap(lat, lon);
+  els.btnReset.addEventListener("click", resetAll);
 
-          addressCache[address] = { utility: utilDetected, dac, fire, psps, lat, lon, ts: Date.now() };
-          saveCache(addressCache);
-        } catch (err) {
-          console.error(err);
-          setAddressStatus(
-            "Address eligibility check failed.\n" +
-            "• Step that failed: " + (err.message || err) + "\n" +
-            "• Tip: Verify your ArcGIS layer URLs (CONFIG.*Url) and network console."
-          );
-        }
-      });
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Escape") resetAll();
+  });
 
-      clearBtn.addEventListener("click", () => {
-        addressInput.value = "";
-        statusBox.classList.add("hidden");
-        statusBox.innerHTML = "";
-        qs(SELECTORS.miniMap).classList.add("hidden");
-        inDACSelect.value = "";
-        inFireSelect.value = "";
-        inPSPSSelect.value = "";
-      });
+  function resetAll(){
+    els.form.reset();
+    els.result.classList.add("hidden");
+    els.btnExport.disabled = true;
+    els.btnCheck.disabled = true;
+    setUtilityStatus("");
+  }
 
-      // Calculate
-      form.addEventListener("submit", e => {
-        e.preventDefault();
+  function setAddrStatus(msg, badges=[]){
+    const box = els.addressStatus;
+    box.innerHTML = `
+      ${badges.map(b=>`<span class="badge">${b}</span>`).join(" ")}
+      ${msg}
+    `;
+    box.classList.remove("hidden");
+  }
 
-        const util = utilitySelect.value;
-        const utilOpen =
-          (IOU_CODES.includes(util) && isAfterOrEqual(todayISO(), CONFIG.openDates.IOUs)) ||
-          (util === "OTHER");
-
-        if (!utilOpen) {
-          alert("Your selected utility is not open yet for SGIP Residential Solar & Storage Equity.");
-          return;
-        }
-
-        if (!validate(form)) {
-          resultEl.hidden = true;
-          return;
-        }
-
-        const amiValRaw = form.amiPercent.value.trim();
-        const amiPercent = amiValRaw === "" ? null : Number(amiValRaw);
-        const careProgram = form.careProgram.value === "yes";
-
-        const payload = {
-          utilityCode: util,
-          squareFootage: parseFloat(form.squareFootage.value) || 0,
-          capacityInput: form.capacity.value,
-          solarCapacityInput: form.solarCapacity.value,
-          amiPercent: typeof amiPercent === "number" && !isNaN(amiPercent) ? amiPercent : null,
-          careProgram,
-          inDAC: form.inDAC.value === "yes"
-        };
-
-        const out = calculate(payload);
-
-        resultEl.innerHTML = out.explanation;
-        resultEl.hidden = false;
-
-        exportBtn.disabled = false;
-        resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-
-      exportBtn.addEventListener("click", () => {
-        if (!resultEl.hidden) {
-          exportPDF(resultEl.innerHTML);
-        }
-      });
-
-      resetBtn.addEventListener("click", () => {
-        form.reset();
-        resultEl.hidden = true;
-        exportBtn.disabled = true;
-        qs(SELECTORS.btnCheck).disabled = true;
-        setUtilityStatus("");
-      });
-
-      document.addEventListener("keydown", e => {
-        if (e.key === "Escape") {
-          form.reset();
-          resultEl.hidden = true;
-          exportBtn.disabled = true;
-          qs(SELECTORS.btnCheck).disabled = true;
-          setUtilityStatus("");
-        }
-      });
-    });
-  </script>
+  function useCached(c){
+    setAddrStatus(
+      `[cached]\n(${c.lat.toFixed(5)}, ${c.lon.toFixed(5)})\nUtility: ${c.utility||"—"}\nDAC: ${c.dac?"Yes":"No"} • Fire 2/3: ${c.fire?"Yes":"No"} • PSPS: ${c.psps?"Yes":"No"}`,
+      [c.utility||"", c.dac?"DAC":"", c.fire?"Tier 2/3":"", c.psps?"PSPS":""].filter(Boolean)
+    );
+    els.inDAC.value = c.dac?"yes":"no";
+    els.inFire.value = c.fire?"yes":"no";
+    els.inPSPS.value = c.psps?"yes":"no";
+    if(c.utility){
+      els.utility.value = c.utility;
+      setUtilityStatus(c.utility);
+    }
+    updateMap(c.lat,c.lon);
+  }
+});
+</script>
 </body>
 </html>
