@@ -63,7 +63,7 @@
       margin-top: 1.5rem;
     }
 
-    select, button {
+    input, select, button {
       width: 100%;
       padding: 0.75rem;
       font-size: 1rem;
@@ -85,20 +85,61 @@
 
     #results {
       margin-top: 2rem;
-      background: #e3f2fd;
-      padding: 1rem;
+    }
+
+    .program-card {
+      background: #ffffff;
       border-left: 6px solid var(--primary-blue);
-      border-radius: 4px;
+      padding: 1rem 1.5rem;
+      margin-top: 1.5rem;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.06);
     }
 
-    .contact-box {
-      font-size: 0.9rem;
-      line-height: 1.5;
-    }
-
-    .contact-box h3 {
-      font-size: 1.1rem;
+    .program-card h3 {
       margin-top: 0;
+      color: var(--primary-blue);
+      font-size: 1.2rem;
+    }
+
+    .program-tags {
+      margin: 0.5rem 0;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #e0f2f1;
+      color: #00695c;
+      font-size: 0.75rem;
+      padding: 0.3rem 0.6rem;
+      margin-right: 0.3rem;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+
+    .tag.low-income {
+      background: #fdd835;
+      color: #222;
+    }
+
+    .program-desc {
+      font-size: 0.95rem;
+      margin: 0.5rem 0 1rem;
+    }
+
+    .program-button {
+      display: inline-block;
+      background: var(--highlight-gold);
+      color: white;
+      font-weight: bold;
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+
+    .program-button:hover {
+      background: #d98f00;
     }
   </style>
 </head>
@@ -106,7 +147,7 @@
 
   <header>
     <h1>Energy Incentive Finder</h1>
-    <p>Discover solar, storage, and efficiency rebates available in your area</p>
+    <p>Discover rebates and tax credits for solar, batteries, and energy upgrades in your area</p>
   </header>
 
   <main>
@@ -128,48 +169,63 @@
         <!-- Add more states here -->
       </select>
 
+      <label for="zipCode">ZIP Code (optional):</label>
+      <input type="text" id="zipCode" placeholder="e.g. 94110" />
+
+      <label for="income">Estimated Annual Household Income:</label>
+      <input type="number" id="income" placeholder="e.g. 45000" />
+
       <button onclick="findPrograms()">Find Programs</button>
 
       <div id="results"></div>
     </div>
 
     <div class="sidebar">
-      <div class="contact-box">
-        <h3>SGIP Program Contacts</h3>
-        <p><strong>PG&E:</strong><br/>
-        <a href="https://www.pge.com/sgip" target="_blank">pge.com/sgip</a><br/>
-        Email: selfgen@pge.com</p>
-
-        <p><strong>SCE:</strong><br/>
-        <a href="https://www.sce.com/SGIP" target="_blank">sce.com/SGIP</a><br/>
-        Email: SGIPGroup@sce.com</p>
-
-        <p><strong>SoCalGas:</strong><br/>
-        <a href="https://socalgas.com/sustainability/power-generation/self-generation-incentive" target="_blank">socalgas.com</a><br/>
-        Email: selfgeneration@socalgas.com</p>
-      </div>
+      <h3>Need Help?</h3>
+      <p>Email your utility provider or visit:</p>
+      <ul>
+        <li><a href="https://www.cpuc.ca.gov/sgip" target="_blank">CPUC SGIP Page</a></li>
+        <li><a href="https://www.energy.gov/save" target="_blank">DOE Energy Saver</a></li>
+        <li><a href="https://illinoissfa.com" target="_blank">Illinois Solar for All</a></li>
+      </ul>
     </div>
   </main>
 
   <script>
-    function findPrograms() {
+    async function findPrograms() {
       const userType = document.getElementById('userType').value;
       const state = document.getElementById('stateSelect').value;
+      const income = parseInt(document.getElementById('income').value || "0");
       const resultsDiv = document.getElementById('results');
 
-      if (!state) {
-        resultsDiv.innerHTML = "<p>Please select a state to see available programs.</p>";
+      resultsDiv.innerHTML = "<p>Loading programs...</p>";
+
+      const res = await fetch('incentives.json');
+      const data = await res.json();
+
+      const matches = data.filter(program => {
+        const sectorMatch = program.sectors.includes(userType);
+        const stateMatch = program.states.includes("all") || program.states.includes(state);
+        const incomeMatch = !program.low_income_only || (program.low_income_only && income && income < 60000);
+        return sectorMatch && stateMatch && incomeMatch;
+      });
+
+      if (matches.length === 0) {
+        resultsDiv.innerHTML = "<p>No programs found. Try adjusting your info.</p>";
         return;
       }
 
-      resultsDiv.innerHTML = `
-        <h2>Programs for ${userType} users in ${state}</h2>
-        <ul>
-          <li><strong>SGIP (California):</strong> Up to $1,100/kWh for battery + $3,100/kW for solar for qualified homes.</li>
-          <li><strong>Federal Tax Credit:</strong> 30% of system costs through 2032 (available in all states).</li>
-          <li><strong>Local Rebates:</strong> More info coming soon...</li>
-        </ul>
-      `;
+      resultsDiv.innerHTML = matches.map(p => `
+        <div class="program-card">
+          <h3>${p.name}</h3>
+          <div class="program-tags">
+            ${p.sectors.map(s => `<span class="tag">${s}</span>`).join('')}
+            ${p.low_income_only ? `<span class="tag low-income">Low Income Only</span>` : ''}
+          </div>
+          <p class="program-desc">${p.description}</p>
+          <a class="program-button" href="${p.url}" target="_blank">Learn More</a>
+        </div>
+      `).join('');
     }
   </script>
 
