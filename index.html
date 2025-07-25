@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>SGIP Eligibility & Incentive Calculator</title>
+  <title>SGIP Residential Solar & Storage Equity Calculator</title>
 
-  <!-- Leaflet (for the small map preview) -->
+  <!-- Leaflet for the small map preview -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -22,18 +22,20 @@
 
   <style>
     :root {
-      /* -------- ORANGE LIGHT THEME -------- */
-      --color-primary: #ff7a00;          /* main CTA / highlights */
-      --color-secondary: #cc5a00;        /* section titles, labels */
-      --color-accent: #ff9f1c;           /* links, hovers, chips */
-      --focus-ring: 3px solid #ff7a00;   /* accessible orange focus */
+      /* CPUC-ish palette */
+      --color-primary: #fdb813;  /* gold */
+      --color-secondary: #003c71;/* navy */
+      --color-accent: #005eb8;   /* blue accent */
 
-      --color-bg: #fdfbf8;
+      --color-bg: #f7f7f7;
       --color-surface: #ffffff;
       --color-text: #1f1f1f;
-      --color-text-muted: #6b6b6b;
-      --color-border: #e6e2dc;
+      --color-text-muted: #666;
+      --color-border: #e5e5e5;
       --color-error: #c0392b;
+      --color-warn: #b65e00;
+
+      --focus-ring: 3px solid #005eb8;
 
       --fs-base: 1rem;
       --fs-sm: 0.875rem;
@@ -93,14 +95,15 @@
       display: grid;
       grid-template-columns: 1fr;
       gap: var(--space-5);
-      max-width: 1200px;
+      max-width: 1300px;
       padding: var(--space-4);
       margin: 0 auto;
     }
-    @media (min-width: 768px) {
+    @media (min-width: 900px) {
       .container {
-        grid-template-columns: 60% 40%;
+        grid-template-columns: 58% 40%;
         align-items: start;
+        column-gap: 2%;
       }
     }
 
@@ -139,6 +142,43 @@
       top: var(--space-4);
     }
 
+    .banner-warn {
+      border-left: 4px solid var(--color-primary);
+      background: #fff3da;
+      padding: var(--space-3);
+      margin-bottom: var(--space-4);
+      color: var(--color-warn);
+      font-weight: 600;
+    }
+
+    .budget-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: var(--space-4);
+      font-size: var(--fs-sm);
+    }
+    .budget-table th, .budget-table td {
+      border: 1px solid var(--color-border);
+      padding: var(--space-2) var(--space-3);
+      text-align: left;
+    }
+    .budget-table thead {
+      background: var(--color-secondary);
+      color: #fff;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .status-open { background: #2e7d32; }
+    .status-closed { background: #b71c1c; }
+    .status-pending { background: #f9a825; color: #000; }
+
     .form-field { margin-bottom: var(--space-4); }
     label {
       display: block;
@@ -175,7 +215,7 @@
     }
     button:active { transform: translateY(1px); }
     .btn-primary { background: var(--color-primary); color: #000; }
-    .btn-primary:hover { background: var(--color-accent); color: #000; }
+    .btn-primary:hover { background: #ffcc4a; color: #000; }
     .btn-secondary { background: transparent; border: 1px solid var(--color-border); color: inherit; }
     .btn-secondary:hover { background: var(--color-border); }
 
@@ -205,7 +245,7 @@
       border: 1px dashed var(--color-border);
       border-radius: var(--radius);
       font-size: var(--fs-sm);
-      background: #fff8f0;
+      background: #fff9ec;
     }
     .badge {
       display: inline-block;
@@ -215,7 +255,7 @@
       font-weight: 600;
       margin-right: 0.25rem;
       color: #000;
-      background: var(--color-accent);
+      background: var(--color-primary);
     }
 
     #miniMap {
@@ -232,7 +272,7 @@
   <a class="skip-link" href="#main">Skip to main content</a>
 
   <header class="site-header" role="banner">
-    <h1 class="site-title">SGIP Eligibility &amp; Incentive Calculator</h1>
+    <h1 class="site-title">SGIP Residential Solar &amp; Storage Equity Calculator</h1>
   </header>
 
   <main id="main" class="container" role="main">
@@ -276,6 +316,51 @@
 
     <aside class="calculator" aria-labelledby="calc-heading">
       <h2 id="calc-heading" class="section-title">Calculator</h2>
+
+      <!-- Budget & waitlist banner -->
+      <div id="waitlistBanner" class="banner-warn hidden">
+        ⚠️ High demand expected — your utility territory may **waitlist** applications once funds are claimed.
+      </div>
+
+      <table class="budget-table" aria-describedby="budget-note">
+        <thead>
+          <tr>
+            <th>Budget Bucket</th>
+            <th>Total Budget</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Storage Incentives</td>
+            <td>$280,000,000</td>
+          </tr>
+          <tr>
+            <td>Solar Incentives</td>
+            <td>$18,000,000</td>
+          </tr>
+        </tbody>
+      </table>
+      <p id="budget-note" class="help">
+        *Static totals shown. Territories may waitlist when demand exceeds remaining funds.
+      </p>
+
+      <!-- Utility + gating -->
+      <div class="form-field">
+        <label for="utility">Utility Territory</label>
+        <select id="utility" name="utility" aria-describedby="utility-status">
+          <option value="">Select your utility</option>
+          <option value="PGE">PG&amp;E</option>
+          <option value="SCE">SCE</option>
+          <option value="SDGE">SDG&amp;E</option>
+          <option value="SCG">SoCalGas</option>
+          <option value="LADWP">LADWP</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <div id="utility-status" class="help" style="margin-top: .5rem;">
+          Status: <span id="utilityStatusPill" class="status-pill status-pending">Select a utility</span>
+          <span id="utilityStatusText"></span>
+        </div>
+      </div>
 
       <!-- Address checker -->
       <section class="address-check" aria-labelledby="addr-title">
@@ -351,53 +436,35 @@
 
         <!-- 5 -->
         <div class="form-field">
-          <label for="equityPathway1">5. Multifamily Equity Pathway</label>
-          <select id="equityPathway1" name="equityPathway1" data-testid="equityPathway1">
-            <option value=""></option>
-            <option value="deed">Deed-restricted low-income housing (≥5 units)</option>
-            <option value="80pct">≥80% units ≤60% AMI</option>
-            <option value="mash">Reserved MASH/SOMAH funds</option>
-          </select>
+          <label for="amiPercent">5. Household income as % of AMI (Area Median Income)</label>
+          <input
+            type="number"
+            id="amiPercent"
+            name="amiPercent"
+            min="0"
+            max="300"
+            step="0.1"
+            placeholder="e.g., 60 (means 60% of AMI)"
+          />
+          <small class="help">
+            If ≤ 80%, you’re considered low‑income for SGIP Equity. If you don’t know, leave blank and indicate program participation below.
+          </small>
         </div>
 
         <!-- 6 -->
         <div class="form-field">
-          <label for="singleEquity">6. Single-Family Equity Criterion</label>
-          <select id="singleEquity" name="singleEquity" data-testid="singleEquity">
-            <option value=""></option>
-            <option value="income">Income verified per HUD</option>
-            <option value="program">Participated in SASH/DAC-SASH/CARE/FERA/ESA</option>
-          </select>
-        </div>
-
-        <!-- 7 -->
-        <div class="form-field">
-          <label for="care">7. CARE Program Participation</label>
-          <select id="care" name="care" data-testid="care" aria-describedby="care-help">
+          <label for="careProgram">6. Participates in CARE / FERA / ESA?</label>
+          <select id="careProgram" name="careProgram" data-testid="careProgram">
             <option value=""></option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
             <option value="unsure">Unsure</option>
           </select>
-          <small id="care-help" class="help">
-            Customers must provide proof of eligibility status in the MASH, SOMAH, SASH, or DAC-SASH, CARE, FERA, or ESA program. CARE, FERA, and ESA documents must reflect income verification has
-            been completed as a result of participation in the programs.
-          </small>
         </div>
 
-        <!-- 8 -->
+        <!-- 7 -->
         <div class="form-field">
-          <label for="govAssistance">8. Receiving any government assistance (e.g., SNAP, Medicaid, SSI, etc.)?</label>
-          <select id="govAssistance" name="govAssistance" data-testid="govAssistance">
-            <option value=""></option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
-
-        <!-- 9 -->
-        <div class="form-field">
-          <label for="squareFootage">9. Home Square Footage</label>
+          <label for="squareFootage">7. Home Square Footage (optional)</label>
           <input
             type="number"
             id="squareFootage"
@@ -408,49 +475,47 @@
             data-testid="squareFootage"
           />
           <small class="help">
-            Will estimate PV size if left blank. Uses 0.0035 kW per ft² (≈7 kW for 2,000 ft²).
+            If Solar PV size is blank, we’ll estimate using 0.0035&nbsp;kW per ft² (≈ 7&nbsp;kW for 2,000&nbsp;ft²).
           </small>
         </div>
 
-        <!-- 10 -->
+        <!-- 8 -->
         <div class="form-field" data-required>
-          <label for="capacity">10. Storage Capacity (kWh)</label>
+          <label for="capacity">8. Storage Capacity (kWh)</label>
           <input
             type="number"
             id="capacity"
             name="capacity"
             min="0"
             step="0.1"
-            value="30.6"
-            placeholder="Default 30.6 kWh (3 batteries)"
+            value="15"
+            placeholder="Default 15 kWh"
             inputmode="decimal"
             required
             data-testid="capacity"
           />
-          <small class="help">
-            Defaults to 3 batteries totaling 30.6 kWh.
-          </small>
           <p class="error" id="capacity-error" hidden></p>
         </div>
 
-        <!-- 11 -->
+        <!-- 9 -->
         <div class="form-field">
-          <label for="solarCapacity">11. Solar PV Capacity (kW)</label>
+          <label for="solarCapacity">9. Solar PV Capacity (kW)</label>
           <input
             type="number"
             id="solarCapacity"
             name="solarCapacity"
             min="0"
             step="0.1"
-            placeholder="Leave blank to auto-estimate from square footage"
+            value="5"
+            placeholder="Default 5 kW (or leave blank)"
             inputmode="decimal"
             data-testid="solarCapacity"
           />
         </div>
 
-        <!-- 12 -->
+        <!-- 10 -->
         <div class="form-field">
-          <label for="backup">12. Backup Capability?</label>
+          <label for="backup">10. Backup Capability?</label>
           <select id="backup" name="backup" data-testid="backup">
             <option value=""></option>
             <option value="yes">Yes</option>
@@ -459,8 +524,11 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" id="btnCheck" class="btn-primary" data-testid="calculate">
-            Calculate Eligibility &amp; Incentive
+          <button type="submit" id="btnCheck" class="btn-primary" data-testid="calculate" disabled>
+            Calculate SGIP Incentive
+          </button>
+          <button type="button" id="btnExport" class="btn-secondary" disabled>
+            Export PDF summary
           </button>
           <button type="button" id="btnReset" class="btn-secondary" data-testid="reset">
             Clear
@@ -482,49 +550,58 @@
   <footer class="site-footer" role="contentinfo">
     <p>
       <small>
-        Built with accessibility and responsiveness in mind. Press <kbd>Enter</kbd> to calculate, <kbd>Esc</kbd> to clear.
+        Press <kbd>Enter</kbd> to calculate, <kbd>Esc</kbd> to clear. This tool is advisory only.
       </small>
     </p>
   </footer>
 
   <script>
     /************************************************************
-     * CONFIG: Production ArcGIS endpoints (kept from previous build)
+     * CONFIG
      ************************************************************/
     const CONFIG = {
       geocodeUrl:
         "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
 
-      // SB 535 Disadvantaged Communities 2022 (Census Tracts & Tribal Areas) – layer 0
+      // SB 535 Disadvantaged Communities 2022 (layer 0)
       sb535Url:
         "https://services1.arcgis.com/PCHfdHz4GlDNAhBb/ArcGIS/rest/services/SB_535_Disadvantaged_Communities_2022/FeatureServer/0/query",
 
       // CPUC Fire Threat Areas – Tier 3 (0) & Tier 2 (1)
       wildfireTierUrls: [
-        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query", // Tier 3
-        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query"  // Tier 2
+        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/0/query",
+        "https://services.arcgis.com/BLN4oKB0N1YSgvY8/ArcGIS/rest/services/CPUC_Fire_Threat_Areas/FeatureServer/1/query"
       ],
 
-      // CPUC Consolidated PSPS polygons (layer 0)
+      // Consolidated PSPS polygons (layer 0)
       pspsUrl:
         "https://services2.arcgis.com/VofPZYDe2pLxSP5G/arcgis/rest/services/Consolidated_PSPS_Map20221231_gdb/FeatureServer/0/query",
+
+      // Program open dates
+      openDates: {
+        IOUs: "2025-05-20", // PG&E, SCE, SDG&E, SoCalGas
+        LADWP: null         // "later in 2025" - no fixed date
+      }
     };
 
+    /************************************************************
+     * Program constants
+     ************************************************************/
     const RATES = {
-      solarRate: 3100,
-      resiliencyEqRate: 1.0,
-      equityRate: 0.85,
-      sjvResRate: 1.1,
-      smallResRate: 0.15,
-      largeScaleRate: 0.25
+      storagePerWh: 1.10,  // $/Wh (=$1,100/kWh)
+      solarPerkW: 3100     // $/kW
     };
-
     const KW_PER_SQFT = 0.0035;
+    const IOU_CODES = ["PGE", "SCE", "SDGE", "SCG"];
 
+    /************************************************************
+     * Helpers
+     ************************************************************/
     const SELECTORS = {
       form: "#calcForm",
       result: "#result",
       btnReset: "#btnReset",
+      btnExport: "#btnExport",
       addressInput: "#addressInput",
       checkAddressBtn: "#checkAddressBtn",
       clearAddressBtn: "#clearAddressBtn",
@@ -532,30 +609,100 @@
       inDAC: "#inDAC",
       inFire: "#inFire",
       inPSPS: "#inPSPS",
-      miniMap: "#miniMap"
+      miniMap: "#miniMap",
+      utility: "#utility",
+      utilityStatusPill: "#utilityStatusPill",
+      utilityStatusText: "#utilityStatusText",
+      waitlistBanner: "#waitlistBanner",
+      btnCheck: "#btnCheck"
     };
 
     const qs = (sel, root = document) => root.querySelector(sel);
-    const money = n => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    const number = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    const money = n => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const money2 = n => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const number1 = n => n.toLocaleString(undefined, { maximumFractionDigits: 1 });
 
-    /* ---------- caching ---------- */
-    const ADDRESS_CACHE_KEY = "sgipAddressCache_v1_orange";
+    const ADDRESS_CACHE_KEY = "sgipAddressCache_v2";
     function loadCache() {
-      try {
-        return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {};
-      } catch {
-        return {};
-      }
+      try { return JSON.parse(localStorage.getItem(ADDRESS_CACHE_KEY)) || {}; } catch { return {}; }
     }
     function saveCache(cache) {
-      try {
-        localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(cache));
-      } catch {}
+      try { localStorage.setItem(ADDRESS_CACHE_KEY, JSON.stringify(cache)); } catch {}
     }
     const addressCache = loadCache();
 
-    /* ---------- validation ---------- */
+    function todayISO() {
+      return new Date().toISOString().slice(0,10);
+    }
+
+    function isAfterOrEqual(dateISO1, dateISO2) {
+      return new Date(dateISO1) >= new Date(dateISO2);
+    }
+
+    function setUtilityStatus(utilityCode) {
+      const pill = qs(SELECTORS.utilityStatusPill);
+      const text = qs(SELECTORS.utilityStatusText);
+      const calcBtn = qs(SELECTORS.btnCheck);
+      const exportBtn = qs(SELECTORS.btnExport);
+      const waitlistBanner = qs(SELECTORS.waitlistBanner);
+
+      pill.className = "status-pill";
+      text.textContent = "";
+
+      const today = todayISO();
+      let open = false;
+      let pending = false;
+
+      if (IOU_CODES.includes(utilityCode)) {
+        // IOUs open May 20, 2025
+        if (isAfterOrEqual(today, CONFIG.openDates.IOUs)) {
+          open = true;
+        } else {
+          pending = true;
+        }
+      } else if (utilityCode === "LADWP") {
+        pending = true; // "later 2025"
+      } else if (utilityCode === "OTHER") {
+        open = true;
+      } else {
+        pending = true;
+      }
+
+      if (open) {
+        pill.textContent = "OPEN";
+        pill.classList.add("status-open");
+        if (IOU_CODES.includes(utilityCode)) {
+          text.innerHTML = ` Opens: May 20, 2025 (now accepting).`;
+          waitlistBanner.classList.remove("hidden"); // simple rule to show banner for IOUs
+        } else if (utilityCode === "OTHER") {
+          text.textContent = ` Check your program administrator for openings.`;
+          waitlistBanner.classList.add("hidden");
+        }
+        calcBtn.disabled = false;
+        exportBtn.disabled = true; // enable after first calc
+      } else if (pending) {
+        pill.textContent = "PENDING";
+        pill.classList.add("status-pending");
+        if (IOU_CODES.includes(utilityCode)) {
+          text.innerHTML = ` Opens May 20, 2025.`;
+        } else if (utilityCode === "LADWP") {
+          text.innerHTML = ` LADWP opens later in 2025.`;
+        } else {
+          text.innerHTML = ` Select your utility to continue.`;
+        }
+        calcBtn.disabled = true;
+        exportBtn.disabled = true;
+        waitlistBanner.classList.add("hidden");
+      } else {
+        pill.textContent = "CLOSED";
+        pill.classList.add("status-closed");
+        text.textContent = ` Not accepting applications.`;
+        calcBtn.disabled = true;
+        exportBtn.disabled = true;
+        waitlistBanner.classList.add("hidden");
+      }
+    }
+
     function validate(form) {
       let valid = true;
 
@@ -583,23 +730,32 @@
       return valid;
     }
 
-    /* ---------- calc ---------- */
-    function calculate(data) {
+    function equityEligibilityReason({ amiPercent, careProgram, inDAC }) {
+      if (typeof amiPercent === "number" && amiPercent <= 80) {
+        return "Income ≤ 80% AMI";
+      }
+      if (careProgram === true) {
+        return "Participating in CARE/FERA/ESA";
+      }
+      if (inDAC === true) {
+        return "Located in a Disadvantaged Community (SB 535)";
+      }
+      return null;
+    }
+
+    function calculate(payload) {
       const {
-        cust,
-        inFire,
-        inPSPS,
-        multiPath,
-        singlePath,
-        careSelected,
-        govAssist,
         squareFootage,
         capacityInput,
-        solarCapacityInput
-      } = data;
+        solarCapacityInput,
+        amiPercent,
+        careProgram,
+        inDAC,
+        utilityCode
+      } = payload;
 
-      let capacity = parseFloat(capacityInput) || 30.6;
-      if (capacity <= 0) capacity = 30.6;
+      let capacity = parseFloat(capacityInput) || 15;
+      if (capacity <= 0) capacity = 15;
 
       let solarCap = parseFloat(solarCapacityInput) || 0;
       let autoPvKwUsed = null;
@@ -609,56 +765,46 @@
         solarCap = parseFloat(autoPvKwUsed.toFixed(1));
       }
 
-      let rate = 0;
-      let budget = "";
-
-      if (
-        (cust === "residential-multi" && multiPath) ||
-        (cust === "residential-single" && singlePath)
-      ) {
-        budget = "Equity Storage";
-        rate = RATES.sjvResRate;
-      } else if (inFire || inPSPS) {
-        budget = "Equity Resiliency Storage";
-        rate = RATES.resiliencyEqRate;
-      } else if (cust && cust.startsWith("residential")) {
-        budget = "Small Residential Storage";
-        rate = RATES.smallResRate;
-      } else {
-        budget = "Large-Scale Storage";
-        rate = RATES.largeScaleRate;
-      }
-
-      const storageIncentive = capacity * 1000 * rate;
-      const solarIncentive = solarCap * RATES.solarRate;
+      const storageIncentive = capacity * 1000 * RATES.storagePerWh;
+      const solarIncentive = solarCap * RATES.solarPerkW;
       const totalIncentive = storageIncentive + solarIncentive;
 
-      let explanation = `You qualify under the **${budget}** category at a rate of $${rate.toFixed(
-        2
-      )}/Wh, resulting in $${money(storageIncentive)} for ${number(
-        capacity
-      )} kWh of storage.\n`;
+      const reason = equityEligibilityReason({ amiPercent, careProgram, inDAC });
+      const equityEligible = !!reason;
 
-      if (solarCap > 0) {
-        explanation += `Additionally, ${number(
-          solarCap
-        )} kW of solar PV earns $${money(
-          solarIncentive
-        )} at $${RATES.solarRate}/kW.\n`;
-      }
+      // Simple waitlist flag (for IOUs), can be improved with live data
+      const possibleWaitlist = IOU_CODES.includes(utilityCode);
 
-      if (autoPvKwUsed !== null) {
-        explanation += `Based on ${squareFootage.toLocaleString()} ft², we estimated a typical PV system size of ~${number(
-          solarCap
-        )} kW (using ${KW_PER_SQFT * 1000} W/ft²).\n`;
-      }
+      let explanation = `
+<strong>SGIP Residential Solar & Storage Equity – Estimated Incentive</strong>
 
-      if (careSelected)
-        explanation += `As a CARE participant, you save ~20% on your electric bill.\n`;
-      if (govAssist)
-        explanation += `Because you indicated you're receiving government assistance, you may qualify for CARE automatically.\n`;
+<strong>Program status</strong>
+• Utility: ${utilityCode || "—"}  
+• ${possibleWaitlist ? "⚠️ Possible waitlist due to high demand." : "Status will vary by PA"}  
 
-      explanation += `\n**Total SGIP incentives: $${money(totalIncentive)}.**`;
+<strong>Your eligibility (auto-evaluated)</strong>
+• Equity-eligible: ${equityEligible ? "Yes" : "No"}${equityEligible ? ` (Reason: ${reason})` : ""}  
+• AMI %: ${typeof amiPercent === "number" ? amiPercent + "%" : "not provided"}  
+• CARE/FERA/ESA: ${careProgram ? "Yes" : "No/Unknown"}  
+• DAC: ${inDAC ? "Yes" : "No"}  
+
+<strong>Your inputs / assumptions</strong>
+• Storage: ${number1(capacity)} kWh → $${money(storageIncentive)} @ $${money2(RATES.storagePerWh)} /Wh  
+${solarCap > 0 ? `• Solar: ${number1(solarCap)} kW → $${money(solarIncentive)} @ $${money(RATES.solarPerkW)} /kW  ` : ""}${
+autoPvKwUsed !== null
+  ? `\n• PV size estimated from ${squareFootage.toLocaleString()} ft² @ 0.0035 kW/ft²`
+  : ""
+}
+
+<strong>Total SGIP incentives (est.): $${money(totalIncentive)}</strong>
+
+<strong>Advanced Payment</strong>
+• You may be able to receive **50% upfront** through the SGIP Advanced Payment option, reducing out-of-pocket costs until project completion.
+
+<strong>Disclaimers</strong>
+• This is a planning tool only; confirm final eligibility, rates, and program status with your SGIP Program Administrator.  
+• Incentive rates and budgets can change; applications may be waitlisted once funds are fully subscribed.
+`;
 
       return { explanation };
     }
@@ -744,19 +890,64 @@
       box.classList.remove("hidden");
     }
 
+    function exportPDF(html) {
+      const w = window.open("", "_blank");
+      w.document.write(`
+        <html>
+          <head>
+            <title>SGIP Incentive Summary</title>
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #111; }
+              h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #003c71; }
+              .section { margin-bottom: 1.25rem; }
+              .muted { color: #666; font-size: 0.875rem; margin-top: 2rem; }
+              strong { color: #003c71; }
+            </style>
+          </head>
+          <body>
+            <h1>SGIP Incentive Summary</h1>
+            <div class="section">
+              ${html}
+            </div>
+            <div class="muted">
+              This summary is advisory only. Confirm eligibility, rates, and program status with your Program Administrator.
+            </div>
+          </body>
+        </html>
+      `);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    /************************************************************
+     * DOM glue
+     ************************************************************/
     document.addEventListener("DOMContentLoaded", () => {
       const form = qs(SELECTORS.form);
       const resultEl = qs(SELECTORS.result);
       const resetBtn = qs(SELECTORS.btnReset);
+      const exportBtn = qs(SELECTORS.btnExport);
+      const calcBtn = qs(SELECTORS.btnCheck);
 
+      const utilitySelect = qs(SELECTORS.utility);
       const addressInput = qs(SELECTORS.addressInput);
       const checkBtn = qs(SELECTORS.checkAddressBtn);
       const clearBtn = qs(SELECTORS.clearAddressBtn);
       const statusBox = qs(SELECTORS.addressStatus);
+      const waitlistBanner = qs(SELECTORS.waitlistBanner);
 
       const inDACSelect = qs(SELECTORS.inDAC);
       const inFireSelect = qs(SELECTORS.inFire);
       const inPSPSSelect = qs(SELECTORS.inPSPS);
+
+      // Initialize
+      setUtilityStatus("");
+
+      utilitySelect.addEventListener("change", () => {
+        setUtilityStatus(utilitySelect.value);
+      });
 
       checkBtn.addEventListener("click", async () => {
         const raw = addressInput.value.trim();
@@ -840,45 +1031,66 @@
       form.addEventListener("submit", e => {
         e.preventDefault();
 
+        // gate by utility open status
+        const util = utilitySelect.value;
+        const utilOpen =
+          (IOU_CODES.includes(util) && isAfterOrEqual(todayISO(), CONFIG.openDates.IOUs)) ||
+          (util === "OTHER");
+
+        if (!utilOpen) {
+          alert("Your selected utility is not open yet for SGIP Residential Solar & Storage Equity.");
+          return;
+        }
+
         if (!validate(form)) {
           resultEl.hidden = true;
           return;
         }
 
+        const amiValRaw = form.amiPercent.value.trim();
+        const amiPercent = amiValRaw === "" ? null : Number(amiValRaw);
+        const careProgram = form.careProgram.value === "yes";
+
         const payload = {
-          cust: form.customerType.value,
-          inFire: form.inFire.value === "yes",
-          inPSPS: form.inPSPS.value === "yes",
-          multiPath: form.equityPathway1.value,
-          singlePath: form.singleEquity.value,
-          careSelected: form.care.value === "yes",
-          govAssist: form.govAssistance.value === "yes",
+          utilityCode: util,
           squareFootage: parseFloat(form.squareFootage.value) || 0,
           capacityInput: form.capacity.value,
-          solarCapacityInput: form.solarCapacity.value
+          solarCapacityInput: form.solarCapacity.value,
+          amiPercent: typeof amiPercent === "number" && !isNaN(amiPercent) ? amiPercent : null,
+          careProgram,
+          inDAC: form.inDAC.value === "yes"
         };
 
         const out = calculate(payload);
 
-        resultEl.innerHTML = out.explanation
-          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-          .replace(/\n/g, "<br />");
+        resultEl.innerHTML = out.explanation;
         resultEl.hidden = false;
 
+        exportBtn.disabled = false;
         resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+
+      exportBtn.addEventListener("click", () => {
+        if (!resultEl.hidden) {
+          exportPDF(resultEl.innerHTML);
+        }
       });
 
       resetBtn.addEventListener("click", () => {
         form.reset();
         resultEl.hidden = true;
-        form.capacity.value = "30.6";
+        exportBtn.disabled = true;
+        qs(SELECTORS.btnCheck).disabled = true;
+        setUtilityStatus("");
       });
 
       document.addEventListener("keydown", e => {
         if (e.key === "Escape") {
           form.reset();
           resultEl.hidden = true;
-          form.capacity.value = "30.6";
+          exportBtn.disabled = true;
+          qs(SELECTORS.btnCheck).disabled = true;
+          setUtilityStatus("");
         }
       });
     });
