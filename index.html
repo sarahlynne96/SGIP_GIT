@@ -20,17 +20,16 @@
     #incomeResult,#result{display:none;margin-top:22px;padding:18px;background:#fff;border-left:5px solid var(--primary);border-radius:4px;font-size:1rem}
     #result h3,#incomeResult h3{margin-top:0;color:var(--secondary)}
     .badge{display:inline-block;background:var(--secondary);color:#fff;padding:.25rem .55rem;border-radius:3px;font-size:.78rem;margin-right:6px}
-    .track{margin-bottom:1rem}
     footer{font-size:.85rem;color:var(--muted);text-align:center;margin:3rem 0}
-    ul{margin:0.5rem 0 0 1.2rem}
   </style>
 </head>
 <body>
   <h1>California SGIP Rebate Estimator</h1>
   <div class="wrapper">
-    <p style="margin:0 0 1rem;font-size:.95rem;color:var(--muted)">Answer a few questions to see every SGIP track you may qualify for and a ball‑park rebate estimate.</p>
+    <p style="margin:0 0 1rem;font-size:.95rem;color:var(--muted)">Answer a few questions to see every SGIP track you may qualify for and a ball-park rebate estimate.</p>
 
     <form id="calcForm" autocomplete="off" novalidate>
+      <!-- PROJECT DETAILS -->
       <fieldset>
         <legend>1. Project details</legend>
         <label for="address">Installation address <em>(optional)</em></label>
@@ -52,9 +51,10 @@
 
         <label for="hhIncome">Annual household income ($)</label>
         <input id="hhIncome" name="hhIncome" type="number" min="0" step="1000" placeholder="e.g. 95000">
-        <small class="note">Low-income threshold = ≤ 80% AMI for selected county & household size.</small>
+        <small class="note">Low-income threshold = ≤ 80 % AMI for selected county & household size.</small>
       </fieldset>
 
+      <!-- CUSTOMER PROFILE -->
       <fieldset>
         <legend>2. Customer</legend>
         <label for="custType">Customer type</label>
@@ -71,6 +71,7 @@
         </select>
       </fieldset>
 
+      <!-- RESILIENCY / RISK -->
       <fieldset>
         <legend>3. Resiliency</legend>
         <label for="dacFlag">Site in DAC or HFTD?</label>
@@ -78,12 +79,12 @@
           <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Unsure</option>
         </select>
 
-        <label for="pspsFlag">≥ 2 PSPS shut‑offs since 2017?</label>
+        <label for="pspsFlag">≥ 2 PSPS shut-offs since 2017?</label>
         <select id="pspsFlag" name="pspsFlag" required>
           <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Unsure</option>
         </select>
 
-        <label for="criticalFac">(Non‑Res) Critical facility?</label>
+        <label for="criticalFac">(Non-Res) Critical facility?</label>
         <select id="criticalFac" name="criticalFac">
           <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No</option>
         </select>
@@ -94,6 +95,7 @@
         </select>
       </fieldset>
 
+      <!-- SYSTEM SIZE -->
       <fieldset>
         <legend>4. System size</legend>
         <label for="storageKWh">Battery usable capacity (kWh)</label>
@@ -107,17 +109,17 @@
     </form>
 
     <div id="incomeResult"></div>
-    <div id="#result"></div>
+    <div id="result"></div>
   </div>
 
-  <footer>Unofficial tool – rates current as of July 27 2025. Actual rebate subject to SGIP budget availability & PA review.</footer>
+  <footer>Unofficial tool – rates current as of July 27 2025. Actual rebate subject to SGIP budget availability & PA review.</footer>
 
   <script>
     const $ = s => document.querySelector(s);
     const money = v => v.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
     const rateFmt = v => `$${v.toFixed(2)}`;
 
-    // County AMI data
+    /***** county AMI data *****/ // :contentReference[oaicite:2]{index=2}
     const COUNTY_AMI = {"Alameda":159800,"Alpine":129500,"Amador":109900,"Butte":96600,"Calaveras":101500,
       "Colusa":96400,"Contra Costa":159800,"Del Norte":93900,"El Dorado":120800,"Fresno":93900,"Glenn":93900,
       "Humboldt":93900,"Imperial":93900,"Inyo":97200,"Kern":93900,"Kings":93900,"Lake":93900,"Lassen":93900,
@@ -130,56 +132,61 @@
       "Sonoma":132000,"Stanislaus":98500,"Sutter":98900,"Tehama":93900,"Trinity":93900,
       "Tulare":93900,"Tuolumne":101600,"Ventura":131300,"Yolo":135900,"Yuba":98900};
 
-    // SGIP rate catalogue
+    /***** SGIP rate catalogue (unchanged) *****/ // :contentReference[oaicite:3]{index=3}
     const RATES = {smallRes:0.15, largeScale:0.25, largeScaleAdder:0.15,
       equityStorage:0.85, equitySolarStorage:1.10, equitySolarAdder:3.10,
       equityResiliency:1.00, nonResEquity:0.85, sjvRes:1.10, sjvNonRes:1.00,
-      gen:2.00, genResAdd:2.50
-    };
+      gen:2.00};
 
-    function catalog() {
-      return [
-        {
-          key:'equitySolarStorage',name:'Equity Solar + Storage',badge:'Equity S+S',
-          elig:u=>u.isLowIncome&&u.dac,rate:`${rateFmt(RATES.equitySolarStorage)}/Wh + ${rateFmt(RATES.equitySolarAdder)}/W`,
-          calc:u=>u.stWh*RATES.equitySolarStorage + u.solW*RATES.equitySolarAdder,
-          description:'Low-income residential in disadvantaged community with solar + storage pairing.',
-          docs:['Online Reservation Request Form','Proof of Income','Proof of Equity Eligibility','Utility bill','Equipment specs']
-        },
-        /* ... other tracks ... */
-      ];
-    }
+    function catalog(){ return [
+      {key:'equitySolarStorage',name:'Equity Solar + Storage',badge:'Equity S+S',
+        elig:u=>u.isLowIncome&&u.res,rate:`${rateFmt(RATES.equitySolarStorage)}/Wh + ${rateFmt(RATES.equitySolarAdder)}/W`,
+        calc:u=>u.stWh*RATES.equitySolarStorage + u.solW*RATES.equitySolarAdder},
+      {key:'equityStorage',name:'Equity Storage-Only',badge:'Equity Storage',
+        elig:u=>u.isLowIncome&&u.res,rate:`${rateFmt(RATES.equityStorage)}/Wh`,
+        calc:u=>u.stWh*RATES.equityStorage},
+      {key:'equityResiliency',name:'Equity Resiliency',badge:'Equity Resil.',
+        elig:u=>u.isLowIncome&&(u.psps||u.res||u.crit),rate:`${rateFmt(RATES.equityResiliency)}/Wh`,
+        calc:u=>u.stWh*RATES.equityResiliency},
+      {key:'sjvRes',name:'SJ Valley Equity',badge:'SJ Valley',
+        elig:u=>u.sjv&&u.isLowIncome,rate:`${rateFmt(RATES.sjvRes)}/Wh`,
+        calc:u=>u.stWh*RATES.sjvRes},
+      {key:'nonResEquity',name:'Non-Res Equity',badge:'NonRes Eq.',
+        elig:u=>u.custType==='nonres'&&u.isLowIncome,rate:`${rateFmt(RATES.nonResEquity)}/Wh`,
+        calc:u=>u.stWh*RATES.nonResEquity},
+      {key:'gen',name:'General Rate',badge:'General',
+        elig:u=>true,rate:`${rateFmt(RATES.gen)}/Wh`,
+        calc:u=>u.stWh*RATES.gen}
+    ]; }
 
     const SIZE_FACTOR=[0.7,0.8,0.9,1,1.08,1.16,1.24,1.32];
-    function calc80(c,size){const b=COUNTY_AMI[c];if(!b)return null;const idx=Math.max(0,Math.min(size-1,SIZE_FACTOR.length-1));return b*SIZE_FACTOR[idx]*0.8;}
+    function calc80(county,size){ const b=COUNTY_AMI[county]; if(!b) return null;
+      const idx=Math.max(0,Math.min(size-1,SIZE_FACTOR.length-1)); return b*SIZE_FACTOR[idx]*0.8;
+    }
 
-    function populateCounties(){const sel=$('#county');sel.innerHTML='<option value="">Choose county…</option>'+Object.keys(COUNTY_AMI).sort().map(c=>`<option>${c}</option>`).join('');}
-    function restoreDraft(){const d=localStorage.getItem('sgipDraft');if(!d)return;Object.entries(JSON.parse(d)).forEach(([k,v])=>{const el=$(`[name="${k}"]`);if(el)el.value=v;});}
+    function populateCounties(){ const sel=$('#county'); sel.innerHTML='<option value=\"\">Choose county…</option>'+Object.keys(COUNTY_AMI).sort().map(c=>`<option>${c}</option>`).join(''); }
+    function restoreDraft(){ const d=localStorage.getItem('sgipDraft'); if(!d) return; Object.entries(JSON.parse(d)).forEach(([k,v])=>{ const el=$(`[name=\"${k}\"]`); if(el) el.value=v; }); }
 
     window.addEventListener('DOMContentLoaded',()=>{
-      populateCounties();restoreDraft();
-      $('#calcForm').addEventListener('submit',e=>{
-        e.preventDefault();const data=Object.fromEntries(new FormData(e.target).entries());
+      populateCounties(); restoreDraft();
+      $('#calcForm').addEventListener('submit', e=>{
+        e.preventDefault();
+        const data=Object.fromEntries(new FormData(e.target).entries());
         localStorage.setItem('sgipDraft',JSON.stringify(data));
-        const hhSize=parseInt(data.hhSize,10),hhInc=parseFloat(data.hhIncome)||0;
-        const stWh=(parseFloat(data.storageKWh)||0)*1000,solW=(parseFloat(data.solarKW)||0)*1000;
+        const hhSize=parseInt(data.hhSize,10), hhInc=parseFloat(data.hhIncome)||0;
+        const stWh=parseFloat(data.storageKWh)||0, solW=(parseFloat(data.solarKW)||0)*1000;
         const threshold=calc80(data.county,hhSize);
         const isLow=threshold&&hhInc>0&&hhInc<=threshold;
-        const user={...data,hhSize,hhInc,stWh,solW,isLowIncome:isLow,dac:data.dacFlag==='yes',psps:data.pspsFlag==='yes',crit:data.critFlag==='yes',sjv:data.sjvFlag==='yes'};
-        const incEl=$('#incomeResult');incEl.style.display='block';incEl.innerHTML=`<h3>Income eligibility</h3><p>80% AMI threshold (${data.county}, ${hhSize}): <strong>${money(threshold)}</strong></p><p>Your income: <strong>${money(hhInc)}</strong> — <strong>${isLow?'Low Income':'Above limit'}</strong></p>`;
-        const resEl=$('#result');resEl.style.display='block';resEl.innerHTML='<h3>Estimated SGIP Rebates</h3>';
-        catalog().filter(t=>t.elig(user)).forEach(t=>{
-          const amt=money(t.calc(user));
-          let html='<div class="track"><span class="badge">'+t.badge+'</span> <strong>'+t.name+'</strong>: '+amt;
-          html+='<ul>';
-          html+='<li><strong>Rate:</strong> '+t.rate+'</li>';
-          html+='<li><strong>Estimated Amount:</strong> '+amt+'</li>';
-          html+='<li><strong>Eligibility:</strong> '+t.description+'</li>';
-          html+='<li><strong>Required Documentation:</strong><ul>';
-          t.docs.forEach(doc=>{html+='<li>'+doc+'</li>';});
-          html+='</ul></li></ul></div>';
-          resEl.innerHTML+=html;
-        });
+        const user={...data, hhSize, hhInc, stWh, solW, isLowIncome:isLow,
+          res:data.dacFlag==='yes', psps:data.pspsFlag==='yes', crit:data.critFlag==='yes', sjv:data.sjvFlag==='yes'
+        };
+        const incEl=$('#incomeResult'), resEl=$('#result');
+        incEl.style.display=resEl.style.display='block';
+        incEl.innerHTML=`<h3>Income eligibility</h3><p>80% AMI threshold (${data.county}, ${hhSize}): <strong>${money(threshold)}</strong></p>`+
+          `<p>Your income: <strong>${money(hhInc)}</strong> — <strong>${isLow?'Low Income':'Above limit'}</strong></p>`;
+        const tracks=catalog().filter(t=>t.elig(user));
+        resEl.innerHTML='<h3>Estimated SGIP Rebates</h3>';
+        tracks.forEach(t=>resEl.innerHTML+=`<div><span class="badge">${t.badge}</span>${t.name}: <strong>${money(t.calc(user))}</strong></div>`);
       });
     });
   </script>
