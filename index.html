@@ -1,52 +1,189 @@
-<div class="form-section" style="margin-top: 2rem; border-left: 4px solid #1E88E5;">
-  <h2>SGIP Eligibility Quick Check (30 Seconds)</h2>
-  <p>This guide follows the official SGIP call center screening flow:</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGIP Incentive Finder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-blue: #00437d;
+      --highlight-gold: #f5a623;
+      --background-light: #f7f9fb;
+      --text-dark: #222;
+      --card-border: #e0e0e0;
+    }
 
-  <label>1. Do you own your home?</label>
-  <select id="sgipHomeowner">
-    <option value="">-- Choose --</option>
-    <option value="yes">Yes</option>
-    <option value="no">No</option>
-  </select>
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      background-color: var(--background-light);
+      color: var(--text-dark);
+    }
 
-  <label>2. Are you enrolled in CARE, FERA, ESA, LIHEAP, or earn under $75K/year?</label>
-  <select id="sgipIncome">
-    <option value="">-- Choose --</option>
-    <option value="yes">Yes</option>
-    <option value="no">No</option>
-  </select>
+    header {
+      background: var(--primary-blue);
+      color: white;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
 
-  <label>3. Have you experienced PSPS (fire shutoffs) or live in a wildfire Tier 2/3 zone?</label>
-  <select id="sgipFireZone">
-    <option value="">-- Choose --</option>
-    <option value="yes">Yes</option>
-    <option value="no">No</option>
-  </select>
+    header h1 {
+      margin: 0;
+      font-size: 2.2rem;
+    }
 
-  <label>4. Does anyone rely on medical equipment (refrigerated meds, oxygen, etc)?</label>
-  <select id="sgipMedical">
-    <option value="">-- Choose --</option>
-    <option value="yes">Yes</option>
-    <option value="no">No</option>
-  </select>
+    main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
 
-  <label>5. Who is your electric utility?</label>
-  <select id="sgipUtility">
-    <option value="">-- Choose --</option>
-    <option value="PGE">PG&E</option>
-    <option value="SCE">SCE</option>
-    <option value="SDGE">SDG&E</option>
-    <option value="other">Other</option>
-  </select>
+    .form-section, .sidebar {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      padding: 2rem;
+    }
 
-  <label>6. Do you have solar installed or are open to adding solar?</label>
-  <select id="sgipSolar">
-    <option value="">-- Choose --</option>
-    <option value="yes">Yes</option>
-    <option value="no">No</option>
-  </select>
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 1.25rem;
+    }
 
-  <button onclick="checkSGIPEligibility()">Check SGIP Eligibility</button>
+    input, select, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--card-border);
+    }
 
-  <div id="sgipResult" style="margin-top: 1rem;"></div>
-</div>
+    button {
+      background: var(--highlight-gold);
+      color: white;
+      font-weight: bold;
+      border: none;
+      margin-top: 2rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #d98f00;
+    }
+
+    h2 {
+      color: var(--primary-blue);
+      margin-top: 0;
+    }
+
+    .map-container iframe {
+      width: 100%;
+      height: 350px;
+      border: 0;
+      border-radius: 8px;
+    }
+
+    #results {
+      margin-top: 2rem;
+    }
+
+    .program-card {
+      border-left: 5px solid var(--primary-blue);
+      background: #fff;
+      padding: 1rem 1.5rem;
+      margin-top: 1.5rem;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    .program-card h3 {
+      margin-top: 0;
+      font-size: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SGIP Incentive Finder</h1>
+    <p>Check if your household qualifies for solar + battery rebates under California’s SGIP</p>
+  </header>
+
+  <main>
+    <div class="form-section">
+      <h2>Quick Eligibility Check</h2>
+      <label for="homeowner">Do you own your home?</label>
+      <select id="homeowner">
+        <option value="">-- Select --</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="income">Is your household income below 80% Area Median Income or enrolled in CARE/FERA/ESA?</label>
+      <select id="income">
+        <option value="">-- Select --</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="firezone">Do you live in a wildfire zone or have had PSPS outages?</label>
+      <select id="firezone">
+        <option value="">-- Select --</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="medical">Does anyone rely on medical equipment?</label>
+      <select id="medical">
+        <option value="">-- Select --</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="utility">Who is your electric utility?</label>
+      <select id="utility">
+        <option value="">-- Select Utility --</option>
+        <option value="PG&E">PG&E</option>
+        <option value="SCE">SCE</option>
+        <option value="SDG&E">SDG&E</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <button onclick="checkEligibility()">Check Eligibility</button>
+
+      <div id="results"></div>
+    </div>
+
+    <div class="sidebar">
+      <h2>Disadvantaged Communities Map</h2>
+      <div class="map-container">
+        <iframe src="https://experience.arcgis.com/experience/2e4b7aa60a444b8d8024b3d342da5607/" allowfullscreen></iframe>
+      </div>
+      <p style="margin-top:1rem;font-size:0.9rem;">Use this map to see if your address is in a DAC-designated zone. These communities may qualify for higher SGIP rebates and priority access.</p>
+    </div>
+  </main>
+
+  <script>
+    function checkEligibility() {
+      const homeowner = document.getElementById('homeowner').value;
+      const income = document.getElementById('income').value;
+      const firezone = document.getElementById('firezone').value;
+      const medical = document.getElementById('medical').value;
+      const utility = document.getElementById('utility').value;
+      const results = document.getElementById('results');
+
+      if (homeowner === "yes" && (income === "yes" || firezone === "yes" || medical === "yes") && ["PG&E", "SCE", "SDG&E"].includes(utility)) {
+        results.innerHTML = `<p style='color:green;font-weight:bold;'>✅ You may qualify for California’s SGIP rebates covering up to 100% of solar and battery installation costs.</p>
+        <p>Visit <a href='https://www.selfgenca.com' target='_blank'>selfgenca.com</a> to start your application or schedule a project manager call.</p>`;
+      } else {
+        results.innerHTML = `<p style='color:red;'>❌ Based on your answers, you may not currently qualify. Consider checking again if your status changes or you move into a DAC zone.</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
