@@ -1,250 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SGIP Eligibility & Rebate Estimator</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>California SGIP Eligibility & Rebate Estimator (v16)</title>
   <style>
-    :root{
-      --primary:#fdb813;--secondary:#003c71;--accent:#005eb8;--bg:#f9f9f9;--text:#333;--muted:#666;--success:#1b8f3b;--danger:#c00;
-    }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;padding-bottom:4rem;}
-    h1{font-size:2rem;font-weight:700;color:var(--primary);text-align:center;margin:1.4rem 0;}
-    a{color:var(--accent);}  
-
-    /* ---------- CALCULATOR CARD ---------- */
-    .wrapper{max-width:800px;margin:0 auto;padding:0 1rem;}
-    form>div{margin-bottom:18px;}
-    label{display:block;font-weight:600;color:var(--secondary);margin-bottom:6px;font-size:1rem;}
-    select,input{width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;font-size:1rem;}
-    small{display:block;margin-top:4px;color:var(--muted);font-size:.85rem;}
-    button{display:block;width:100%;background:var(--primary);color:#fff;border:none;padding:12px 20px;font-size:1rem;border-radius:4px;font-weight:600;cursor:pointer;transition:background .3s ease;}button:hover{background:var(--accent);}button:disabled{opacity:.6;cursor:not-allowed;}
-
-    #result{display:none;margin-top:22px;padding:18px;background:#fff;border-left:5px solid var(--primary);border-radius:4px;font-size:1rem;}
-    #result h3{margin-top:0;color:var(--secondary);}#result p{margin:.65rem 0;}
-    .card{border:1px solid #ddd;border-radius:6px;margin-top:1rem;padding:1rem;}
-    details{border:1px solid #e1e1e1;border-radius:6px;margin-top:1rem;padding:.75rem;}details[open]{border-color:var(--secondary);}summary{cursor:pointer;font-weight:600;outline:none;}
-    .badge{display:inline-block;background:var(--secondary);color:#fff;padding:0.25rem 0.55rem;border-radius:3px;font-size:.78rem;margin-right:6px;}
-    .tag-ok{color:var(--success);} .tag-no{color:var(--danger);}  
-
-    /* ---------- MAP BOXES AT FOOTER ---------- */
-    .maps{margin:3rem auto 0;max-width:1100px;padding:0 1rem;}
-    .map-box{border:1px solid var(--accent);border-radius:6px;overflow:hidden;margin-bottom:24px;background:#fff;}
-    .map-box h2{background:var(--secondary);color:#fff;font-size:1rem;font-weight:600;padding:10px;}
-    .map-box iframe{width:100%;height:380px;border:0;}
-
-    footer{text-align:center;font-size:.85rem;padding:1.5rem 0;color:var(--muted);}  
+    :root{--primary:#fdb813;--secondary:#003c71;--accent:#005eb8;--bg:#f9f9f9;--text:#333;--muted:#666}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.45;padding-bottom:4rem}
+    h1{font-size:2rem;font-weight:700;color:var(--primary);text-align:center;margin:1.4rem 0}
+    .wrapper{max-width:960px;margin:0 auto;padding:0 1rem}
+    fieldset{border:1px solid #ddd;border-radius:6px;padding:1rem;margin-bottom:1rem}
+    legend{font-weight:600;color:var(--secondary);padding:0 .5rem}
+    label{display:block;font-weight:600;color:var(--secondary);margin:.9rem 0 .4rem}
+    select,input{width:100%;padding:10px;border:1px solid #ccc;border-radius:4px;font-size:1rem}
+    small{display:block;margin-top:4px;color:var(--muted);font-size:.85rem}
+    button{display:block;width:100%;background:var(--primary);color:#fff;border:none;padding:12px;font-size:1rem;border-radius:4px;font-weight:600;cursor:pointer;transition:background .3s;margin-top:1rem}
+    button:hover{background:var(--accent)}button:disabled{opacity:.6;cursor:not-allowed}
+    #incomeResult,#result{display:none;margin-top:22px;padding:18px;background:#fff;border-left:5px solid var(--primary);border-radius:4px;font-size:1rem}
+    #result h3,#incomeResult h3{margin-top:0;color:var(--secondary)}
+    .badge{display:inline-block;background:var(--secondary);color:#fff;padding:.25rem .55rem;border-radius:3px;font-size:.78rem;margin-right:6px}
+    footer{font-size:.85rem;color:var(--muted);text-align:center;margin:3rem 0}
   </style>
 </head>
 <body>
   <h1>California SGIP Rebate Estimator</h1>
   <div class="wrapper">
-    <p style="margin:0 0 1rem;font-size:.95rem;color:var(--muted);">Answer the quick questions below (estimates are fine). Hit <strong>Calculate</strong> to see which SGIP program fits you best and how much you could receive.</p>
-    <form id="calcForm" novalidate>
-      <div>
-        <label for="utility">1. Which utility serves the site?</label>
-        <select id="utility" required>
+    <p style="margin:0 0 1rem;font-size:.95rem;color:var(--muted)">Answer a few questions to see every SGIP track you may qualify for and a ball-park rebate estimate.</p>
+
+    <form id="calcForm" autocomplete="off" novalidate>
+      <!-- PROJECT DETAILS -->
+      <fieldset>
+        <legend>1. Project details</legend>
+        <label for="address">Installation address <em>(optional)</em></label>
+        <input id="address" name="address" placeholder="1234 Main St, Fresno CA" />
+
+        <label for="utility">Utility company</label>
+        <select id="utility" name="utility" required>
           <option value="">Choose…</option>
           <option>CSE</option><option>SCE</option><option>SCG</option><option>PG&E</option><option>LADWP</option>
         </select>
-      </div>
-      <div>
-        <label for="custType">2. What type of customer are you?</label>
-        <select id="custType" required>
+
+        <label for="county">County <em>(for income test)</em></label>
+        <select id="county" name="county" required>
+          <option value="">Choose county…</option>
+        </select>
+
+        <label for="hhSize">Household size (persons)</label>
+        <input id="hhSize" name="hhSize" type="number" min="1" max="8" step="1" value="4">
+
+        <label for="hhIncome">Annual household income ($)</label>
+        <input id="hhIncome" name="hhIncome" type="number" min="0" step="1000" placeholder="e.g. 95000">
+        <small class="note">Low-income threshold = ≤ 80 % AMI for selected county & household size.</small>
+      </fieldset>
+
+      <!-- CUSTOMER PROFILE -->
+      <fieldset>
+        <legend>2. Customer</legend>
+        <label for="custType">Customer type</label>
+        <select id="custType" name="custType" required>
           <option value="">Choose…</option>
           <option value="single">Home – Single-Family</option>
-          <option value="multi">Home – Multifamily (5+ units)</option>
+          <option value="multi">Home – Multifamily</option>
           <option value="nonres">Business / Non-Residential</option>
         </select>
-      </div>
-      <div>
-        <label for="dacFlag">3. Is your address in a Disadvantaged Community (DAC) or High Fire-Threat District (HFTD)?</label>
-        <select id="dacFlag" required><option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Not sure</option></select>
-        <small>Tip: use the map links at the bottom if you’re unsure.</small>
-      </div>
-      <div>
-        <label for="pspsFlag">4. Has your location experienced recent PSPS shut-offs?</label>
-        <select id="pspsFlag" required><option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Unsure</option></select>
-      </div>
-      <div>
-        <label for="incomeFlag">5. Do you qualify for CARE / FERA or is household income ≤ 80 % AMI?</label>
-        <select id="incomeFlag" required><option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Unsure</option></select>
-      </div>
-      <div>
-        <label for="critFlag">6. Medical baseline customer or essential well-pump?</label>
-        <select id="critFlag" required><option value="">Choose…</option><option value="yes">Yes</option><option value="no">No</option></select>
-      </div>
-      <div>
-        <label for="storageKWh">7. Planned battery size in kWh</label>
-        <input type="number" id="storageKWh" min="0" step="0.1" placeholder="e.g. 20" required>
-      </div>
-      <div>
-        <label for="solarKW">8. Solar PV size in kW <em>(optional)</em></label>
-        <input type="number" id="solarKW" min="0" step="0.1" placeholder="e.g. 6">
-      </div>
-      <div>
-        <label for="backupFlag">9. Will the system power your home/business during an outage?</label>
-        <select id="backupFlag" required><option value="">Choose…</option><option value="yes">Yes – Backup capable</option><option value="no">No</option></select>
-      </div>
-      <button id="btnCalc" type="button">Calculate</button>
+
+        <label for="critFlag">Medical Baseline enrollee or critical well-pump?</label>
+        <select id="critFlag" name="critFlag" required>
+          <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No</option>
+        </select>
+      </fieldset>
+
+      <!-- RESILIENCY / RISK -->
+      <fieldset>
+        <legend>3. Resiliency</legend>
+        <label for="dacFlag">Site in DAC or HFTD?</label>
+        <select id="dacFlag" name="dacFlag" required>
+          <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Unsure</option>
+        </select>
+
+        <label for="pspsFlag">≥ 2 PSPS shut-offs since 2017?</label>
+        <select id="pspsFlag" name="pspsFlag" required>
+          <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No / Unsure</option>
+        </select>
+
+        <label for="criticalFac">(Non-Res) Critical facility?</label>
+        <select id="criticalFac" name="criticalFac">
+          <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No</option>
+        </select>
+
+        <label for="sjvFlag">In San Joaquin Valley pilot city?</label>
+        <select id="sjvFlag" name="sjvFlag" required>
+          <option value="">Choose…</option><option value="yes">Yes</option><option value="no">No</option>
+        </select>
+      </fieldset>
+
+      <!-- SYSTEM SIZE -->
+      <fieldset>
+        <legend>4. System size</legend>
+        <label for="storageKWh">Battery usable capacity (kWh)</label>
+        <input id="storageKWh" name="storageKWh" type="number" min="0" step="0.1" placeholder="e.g. 20" required>
+
+        <label for="solarKW">Solar array size (kW) <em>(if pairing)</em></label>
+        <input id="solarKW" name="solarKW" type="number" min="0" step="0.1" placeholder="e.g. 6">
+      </fieldset>
+
+      <button type="submit" id="btnCalc">Calculate & save</button>
     </form>
 
+    <div id="incomeResult"></div>
     <div id="result"></div>
   </div>
 
-  <!-- -------------- MAPS -------------- -->
-  <section class="maps">
-    <div class="map-box">
-      <h2>SB 535 Disadvantaged Communities Map</h2>
-      <iframe title="DAC Map" loading="lazy" src="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities?embed=true"></iframe>
-    </div>
-    <div class="map-box">
-      <h2>Wildfire Threat & PSPS Status Tools</h2>
-      <p style="padding:10px;font-size:.95rem;">
-        • <a href="https://ia.cpuc.ca.gov/firethreatmap/" target="_blank">CPU﻿C Fire-Threat District Map</a><br>
-        • <a href="https://www.sce.com/outage-center/check-outage-status" target="_blank">SCE Public-Safety Shutoff Lookup</a>
-      </p>
-    </div>
-  </section>
-
-  <footer>
-    Rates per <a href="https://www.cpuc.ca.gov/sgip" target="_blank">CPUC SGIP</a> (updated July 2025, unofficial tool).
-  </footer>
+  <footer>Unofficial tool – rates current as of July 27 2025. Actual rebate subject to SGIP budget availability & PA review.</footer>
 
   <script>
-    /* ---------- RATE TABLE (July 2025 current step) ---------- */
-    const RATE_TABLE={
-      largeScale:{CSE:.25,SCE:.25,SCG:.25,'PG&E':.25,LADWP:.25},
-      smallRes:{CSE:.15,SCE:.15,SCG:.15,'PG&E':.15,LADWP:.15},
-      equityStorage:{CSE:.85,SCE:.85,SCG:.85,'PG&E':.85,LADWP:.85},
-      equitySolarStorage:{CSE:1.10,SCE:1.10,SCG:1.10,'PG&E':1.10,LADWP:1.10},
-      equitySolarAdder:{CSE:3.10,SCE:3.10,SCG:3.10,'PG&E':3.10,LADWP:3.10},
-      equityResiliency:{CSE:1.00,SCE:1.00,SCG:1.00,'PG&E':1.00,LADWP:1.00},
-      gen:{CSE:2.00,SCE:2.00,SCG:2.00,'PG&E':2.00,LADWP:2.00},
-      genResiliency:{CSE:4.50,SCE:4.50,SCG:4.50,'PG&E':4.50,LADWP:4.50}
-    };
+    const $ = s => document.querySelector(s);
+    const money = v => v.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+    const rateFmt = v => `$${v.toFixed(2)}`;
 
-    /* ---------- PROGRAMS ---------- */
-    function makePrograms(utility){
-      const r=RATE_TABLE; // shorthand
-      return [
-        {
-          name:'Residential Solar + Storage Equity',badge:'Equity S+S',category:'res',
-          rateText:`${fmt(r.equitySolarStorage[utility])}/Wh + ${fmt(r.equitySolarAdder[utility])}/W`,
-          blurb:'Highest incentive for income-qualified homes pairing batteries with solar.',
-          requirements:['Income ≤80% AMI or CARE/FERA','Single-family or multifamily residence'],
-          docs:['Income proof or CARE/FERA bill','SGIP application package'],
-          eligibility:u=>u.res&&u.income,
-          calc:u=>u.stWh*r.equitySolarStorage[utility]+u.solW*r.equitySolarAdder[utility]
-        },
-        {
-          name:'Residential Equity – Storage Only',badge:'Equity Storage',category:'res',
-          rateText:`${fmt(r.equityStorage[utility])}/Wh`,
-          blurb:'Low-income homes installing a standalone battery.',
-          requirements:['Income qualification as above'],docs:['Same as above'],
-          eligibility:u=>u.res&&u.income,
-          calc:u=>u.stWh*r.equityStorage[utility]
-        },
-        {
-          name:'Equity Resiliency',badge:'Equity Resiliency',category:'res',
-          rateText:`${fmt(r.equityResiliency[utility])}/Wh`,
-          blurb:'Homes in Fire-Threat or PSPS zones needing backup.',
-          requirements:['HFTD Tier 2/3 or ≥2 PSPS events','Income qualifier OR medical baseline / well-pump'],docs:['Resiliency Attestation'],
-          eligibility:u=>u.res&&(u.psps||u.hftd||u.medical)&&u.income,
-          calc:u=>u.stWh*r.equityResiliency[utility]
-        },
-        {
-          name:'Small Residential – General Market',badge:'Small Res',category:'res',
-          rateText:`${fmt(r.smallRes[utility])}/Wh`,
-          blurb:'Base incentive for homes ≤30 kWh not in Equity budgets.',
-          requirements:['Battery ≤30 kWh'],docs:['Standard SGIP docs'],
-          eligibility:u=>u.res&&!u.income&&u.stKWh<=30,
-          calc:u=>u.stWh*r.smallRes[utility]
-        },
-        {
-          name:'Large-Scale Commercial',badge:'Large Storage',category:'nonres',
-          rateText:`${fmt(r.largeScale[utility])}/Wh`,
-          blurb:'General market storage for businesses (>30 kWh).',
-          requirements:['Commercial / industrial system'],docs:['PBI metering plan'],
-          eligibility:u=>u.nonres,
-          calc:u=>u.stWh*r.largeScale[utility]
-        },
-        {
-          name:'Commercial Resiliency Adder',badge:'Non-Res Resiliency',category:'nonres',
-          rateText:`${fmt(r.largeScale[utility]+0.15)}/Wh`,
-          blurb:'Business critical facilities in PSPS / HFTD zones.',
-          requirements:['Critical facility or PSPS/HFTD site'],docs:['Resiliency Attestation'],
-          eligibility:u=>u.nonres&&(u.psps||u.hftd||u.medical||u.crit),
-          calc:u=>u.stWh*(r.largeScale[utility]+0.15)
-        },
-        {
-          name:'Renewable Generation',badge:'Generation',category:'gen',
-          rateText:`${fmt(r.gen[utility])}/W`,
-          blurb:'Wind, bio-gas, or PV ≥10 kW at non-residential sites.',
-          requirements:['Qualifying renewable tech ≤3 MW'],docs:['Tech spec sheets'],
-          eligibility:u=>u.solKW>0,
-          calc:u=>u.solW*r.gen[utility]
-        },
-        {
-          name:'Generation Resiliency Adder',badge:'Gen Resiliency',category:'gen',
-          rateText:`${fmt(r.genResiliency[utility])}/W`,
-          blurb:'Critical facilities adding islanding capability.',
-          requirements:['Critical facility in PSPS / HFTD'],docs:['Resiliency Attestation'],
-          eligibility:u=>u.solKW>0&&(u.psps||u.hftd||u.crit),
-          calc:u=>u.solW*r.genResiliency[utility]
-        }
-      ];
+    /***** county AMI data *****/ // :contentReference[oaicite:2]{index=2}
+    const COUNTY_AMI = {"Alameda":159800,"Alpine":129500,"Amador":109900,"Butte":96600,"Calaveras":101500,
+      "Colusa":96400,"Contra Costa":159800,"Del Norte":93900,"El Dorado":120800,"Fresno":93900,"Glenn":93900,
+      "Humboldt":93900,"Imperial":93900,"Inyo":97200,"Kern":93900,"Kings":93900,"Lake":93900,"Lassen":93900,
+      "Los Angeles":106600,"Madera":93900,"Marin":186600,"Mariposa":93900,"Mendocino":93900,"Merced":93900,
+      "Modoc":93900,"Mono":118500,"Monterey":104500,"Napa":146700,"Nevada":124600,"Orange":136600,
+      "Placer":120800,"Plumas":95300,"Riverside":103900,"Sacramento":120800,"San Benito":140200,
+      "San Bernardino":103900,"San Diego":130800,"San Francisco":186600,"San Joaquin":104600,
+      "San Luis Obispo":125600,"San Mateo":186600,"Santa Barbara":119100,"Santa Clara":195200,
+      "Santa Cruz":132800,"Shasta":101800,"Sierra":93900,"Siskiyou":93900,"Solano":124600,
+      "Sonoma":132000,"Stanislaus":98500,"Sutter":98900,"Tehama":93900,"Trinity":93900,
+      "Tulare":93900,"Tuolumne":101600,"Ventura":131300,"Yolo":135900,"Yuba":98900};
+
+    /***** SGIP rate catalogue (unchanged) *****/ // :contentReference[oaicite:3]{index=3}
+    const RATES = {smallRes:0.15, largeScale:0.25, largeScaleAdder:0.15,
+      equityStorage:0.85, equitySolarStorage:1.10, equitySolarAdder:3.10,
+      equityResiliency:1.00, nonResEquity:0.85, sjvRes:1.10, sjvNonRes:1.00,
+      gen:2.00};
+
+    function catalog(){ return [
+      {key:'equitySolarStorage',name:'Equity Solar + Storage',badge:'Equity S+S',
+        elig:u=>u.isLowIncome&&u.res,rate:`${rateFmt(RATES.equitySolarStorage)}/Wh + ${rateFmt(RATES.equitySolarAdder)}/W`,
+        calc:u=>u.stWh*RATES.equitySolarStorage + u.solW*RATES.equitySolarAdder},
+      {key:'equityStorage',name:'Equity Storage-Only',badge:'Equity Storage',
+        elig:u=>u.isLowIncome&&u.res,rate:`${rateFmt(RATES.equityStorage)}/Wh`,
+        calc:u=>u.stWh*RATES.equityStorage},
+      {key:'equityResiliency',name:'Equity Resiliency',badge:'Equity Resil.',
+        elig:u=>u.isLowIncome&&(u.psps||u.res||u.crit),rate:`${rateFmt(RATES.equityResiliency)}/Wh`,
+        calc:u=>u.stWh*RATES.equityResiliency},
+      {key:'sjvRes',name:'SJ Valley Equity',badge:'SJ Valley',
+        elig:u=>u.sjv&&u.isLowIncome,rate:`${rateFmt(RATES.sjvRes)}/Wh`,
+        calc:u=>u.stWh*RATES.sjvRes},
+      {key:'nonResEquity',name:'Non-Res Equity',badge:'NonRes Eq.',
+        elig:u=>u.custType==='nonres'&&u.isLowIncome,rate:`${rateFmt(RATES.nonResEquity)}/Wh`,
+        calc:u=>u.stWh*RATES.nonResEquity},
+      {key:'gen',name:'General Rate',badge:'General',
+        elig:u=>true,rate:`${rateFmt(RATES.gen)}/Wh`,
+        calc:u=>u.stWh*RATES.gen}
+    ]; }
+
+    const SIZE_FACTOR=[0.7,0.8,0.9,1,1.08,1.16,1.24,1.32];
+    function calc80(county,size){ const b=COUNTY_AMI[county]; if(!b) return null;
+      const idx=Math.max(0,Math.min(size-1,SIZE_FACTOR.length-1)); return b*SIZE_FACTOR[idx]*0.8;
     }
 
-    /* ---------- UTIL ---------- */
-    const $=q=>document.querySelector(q);
-    const fmtUSD=v=>v.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
-    const fmt=v=>`$${v.toFixed(2)}`;
+    function populateCounties(){ const sel=$('#county'); sel.innerHTML='<option value=\"\">Choose county…</option>'+Object.keys(COUNTY_AMI).sort().map(c=>`<option>${c}</option>`).join(''); }
+    function restoreDraft(){ const d=localStorage.getItem('sgipDraft'); if(!d) return; Object.entries(JSON.parse(d)).forEach(([k,v])=>{ const el=$(`[name=\"${k}\"]`); if(el) el.value=v; }); }
 
-    /* ---------- MAIN ---------- */
-    $('#btnCalc').addEventListener('click',()=>{
-      /* collect input */
-      const u={
-        utility:$('#utility').value,
-        cust:$('#custType').value,
-        hftd:$('#dacFlag').value==='yes',
-        psps:$('#pspsFlag').value==='yes',
-        income:$('#incomeFlag').value==='yes',
-        medical:$('#critFlag').value==='yes',
-        stKWh:parseFloat($('#storageKWh').value||0),
-        solKW:parseFloat($('#solarKW').value||0)
-      };
-      if(!u.utility){alert('Please choose your utility company.');return;}
-      if(!u.stKWh){alert('Please enter a battery size to continue.');return;}
-      u.res=(u.cust==='single'||u.cust==='multi');
-      u.nonres=(u.cust==='nonres');
-      u.crit=u.medical;
-      u.stWh=u.stKWh*1000;
-      u.solW=u.solKW*1000;
-
-      const PROGRAMS=makePrograms(u.utility);
-
-      const eligible=PROGRAMS.filter(p=>p.eligibility(u)).map(p=>({...p,reward:p.calc(u)}));
-      const best=eligible.sort((a,b)=>b.reward-a.reward)[0];
-
-      const resEl=$('#result');
-      if(!best){resEl.innerHTML='<p>No SGIP budget appears to match these inputs. Double-check your answers or contact your Program Administrator.</p>';resEl.style.display='block';return;}
-
-      let html=`<h3>You appear to qualify for the <strong>${best.name}</strong> program.</h3>`;
-      html+=`<p>${best.blurb}</p>`;
-      html+=`<p>• <strong>Incentive rate:</strong> ${best.rateText}<br>• <strong>Estimated rebate:</strong> <span style="color:var(--primary);font-weight:600;">${fmtUSD(best.reward)}</span></p>`;
-      html+=`<p>This estimate is based on <strong>${u.stKWh.toLocaleString()} kWh</strong> of battery storage${u.solKW?` and <strong>${u.solKW.toLocaleString()} kW</strong> of solar PV`:''}. Actual reservation depends on step availability, equipment specs & CPUC verification.</p>`;
-
-      html+=`<div class="card"><strong>Documentation checklist:</strong><ul style="margin:.5rem 0 .5rem 1.1rem;">${best.docs.map(d=>`<li>${d}</li>`).join('')}</ul></div>`;
-
-      html+=`<details><summary style="margin-top:1rem;">See your status across all SGIP buckets</summary>`;
-      PROGRAMS.forEach(p=>{
-        const ok=eligible.find(e=>e.name===p.name);
-        html+=`<div style="margin-top:1rem;"><span class="badge">${p.badge}</span> ${p.name} – <span class="${ok?'tag-ok':'tag-no'}">${ok?'Eligible':'Not Eligible'}</span></div>`;
+    window.addEventListener('DOMContentLoaded',()=>{
+      populateCounties(); restoreDraft();
+      $('#calcForm').addEventListener('submit', e=>{
+        e.preventDefault();
+        const data=Object.fromEntries(new FormData(e.target).entries());
+        localStorage.setItem('sgipDraft',JSON.stringify(data));
+        const hhSize=parseInt(data.hhSize,10), hhInc=parseFloat(data.hhIncome)||0;
+        const stWh=parseFloat(data.storageKWh)||0, solW=(parseFloat(data.solarKW)||0)*1000;
+        const threshold=calc80(data.county,hhSize);
+        const isLow=threshold&&hhInc>0&&hhInc<=threshold;
+        const user={...data, hhSize, hhInc, stWh, solW, isLowIncome:isLow,
+          res:data.dacFlag==='yes', psps:data.pspsFlag==='yes', crit:data.critFlag==='yes', sjv:data.sjvFlag==='yes'
+        };
+        const incEl=$('#incomeResult'), resEl=$('#result');
+        incEl.style.display=resEl.style.display='block';
+        incEl.innerHTML=`<h3>Income eligibility</h3><p>80% AMI threshold (${data.county}, ${hhSize}): <strong>${money(threshold)}</strong></p>`+
+          `<p>Your income: <strong>${money(hhInc)}</strong> — <strong>${isLow?'Low Income':'Above limit'}</strong></p>`;
+        const tracks=catalog().filter(t=>t.elig(user));
+        resEl.innerHTML='<h3>Estimated SGIP Rebates</h3>';
+        tracks.forEach(t=>resEl.innerHTML+=`<div><span class="badge">${t.badge}</span>${t.name}: <strong>${money(t.calc(user))}</strong></div>`);
       });
-      html+='</details>';
-
-      resEl.innerHTML=html;
-      resEl.style.display='block';
-      resEl.scrollInto
+    });
+  </script>
+</body>
+</html>
