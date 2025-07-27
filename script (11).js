@@ -86,8 +86,12 @@
           <div id="thresholdHint" class="note"></div>
 
           <details>
-            <summary>Disadvantaged Communities & Fire Threat Map</summary>
-            <iframe src="https://www.arcgis.com/apps/MapSeries/index.html?appid=DAC_HFTD_Map_ID"></iframe>
+            <summary>View SGIP Maps<span class="tooltip" title="Show maps for disadvantaged communities, fire threat, and PSPS areas">?</span></summary>
+            <div style="display:grid;grid-template-columns:1fr;gap:1rem;margin-top:1rem">
+              <iframe src="https://experience.arcgis.com/experience/1c21c53da8de48f1b946f3402fbae55c/page/SB-535-Disadvantaged-Communities/" title="SB 535 Disadvantaged Communities"></iframe>
+              <iframe src="https://capuc.maps.arcgis.com/apps/webappviewer/index.html?id=5bdb921d747a46929d9f00dbdb6d0fa2" title="High Fire Threat Districts"></iframe>
+              <iframe src="https://capuc.maps.arcgis.com/apps/dashboards/ecd21b1c204f47da8b1fcc4c5c3b7d3a" title="PSPS Events Dashboard"></iframe>
+            </div>
           </details>
         </fieldset>
       </div>
