@@ -1,233 +1,52 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Energy Incentive Finder</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary-blue: #1E88E5;
-      --highlight-gold: #F4A300;
-      --background-light: #f9f9f9;
-      --text-dark: #222;
-    }
+<div class="form-section" style="margin-top: 2rem; border-left: 4px solid #1E88E5;">
+  <h2>SGIP Eligibility Quick Check (30 Seconds)</h2>
+  <p>This guide follows the official SGIP call center screening flow:</p>
 
-    body {
-      font-family: 'Roboto', sans-serif;
-      background-color: var(--background-light);
-      margin: 0;
-      color: var(--text-dark);
-    }
+  <label>1. Do you own your home?</label>
+  <select id="sgipHomeowner">
+    <option value="">-- Choose --</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
 
-    header {
-      background: var(--primary-blue);
-      color: white;
-      padding: 2rem 1rem;
-      text-align: center;
-    }
+  <label>2. Are you enrolled in CARE, FERA, ESA, LIHEAP, or earn under $75K/year?</label>
+  <select id="sgipIncome">
+    <option value="">-- Choose --</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
 
-    header h1 {
-      margin: 0;
-      font-size: 2rem;
-    }
+  <label>3. Have you experienced PSPS (fire shutoffs) or live in a wildfire Tier 2/3 zone?</label>
+  <select id="sgipFireZone">
+    <option value="">-- Choose --</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
 
-    main {
-      display: flex;
-      flex-wrap: wrap;
-      max-width: 1100px;
-      margin: auto;
-      padding: 2rem;
-      gap: 2rem;
-    }
+  <label>4. Does anyone rely on medical equipment (refrigerated meds, oxygen, etc)?</label>
+  <select id="sgipMedical">
+    <option value="">-- Choose --</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
 
-    .form-section {
-      flex: 2;
-      background: white;
-      padding: 2rem;
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.05);
-    }
+  <label>5. Who is your electric utility?</label>
+  <select id="sgipUtility">
+    <option value="">-- Choose --</option>
+    <option value="PGE">PG&E</option>
+    <option value="SCE">SCE</option>
+    <option value="SDGE">SDG&E</option>
+    <option value="other">Other</option>
+  </select>
 
-    .sidebar {
-      flex: 1;
-      background: #ffffff;
-      padding: 1.5rem;
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.05);
-    }
+  <label>6. Do you have solar installed or are open to adding solar?</label>
+  <select id="sgipSolar">
+    <option value="">-- Choose --</option>
+    <option value="yes">Yes</option>
+    <option value="no">No</option>
+  </select>
 
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 1.5rem;
-    }
+  <button onclick="checkSGIPEligibility()">Check SGIP Eligibility</button>
 
-    input, select, button {
-      width: 100%;
-      padding: 0.75rem;
-      font-size: 1rem;
-      margin-top: 0.5rem;
-    }
-
-    button {
-      background: var(--highlight-gold);
-      border: none;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      margin-top: 2rem;
-    }
-
-    button:hover {
-      background: #d98f00;
-    }
-
-    #results {
-      margin-top: 2rem;
-    }
-
-    .program-card {
-      background: #ffffff;
-      border-left: 6px solid var(--primary-blue);
-      padding: 1rem 1.5rem;
-      margin-top: 1.5rem;
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.06);
-    }
-
-    .program-card h3 {
-      margin-top: 0;
-      color: var(--primary-blue);
-      font-size: 1.2rem;
-    }
-
-    .program-tags {
-      margin: 0.5rem 0;
-    }
-
-    .tag {
-      display: inline-block;
-      background: #e0f2f1;
-      color: #00695c;
-      font-size: 0.75rem;
-      padding: 0.3rem 0.6rem;
-      margin-right: 0.3rem;
-      border-radius: 3px;
-      font-weight: bold;
-    }
-
-    .tag.low-income {
-      background: #fdd835;
-      color: #222;
-    }
-
-    .program-desc {
-      font-size: 0.95rem;
-      margin: 0.5rem 0 1rem;
-    }
-
-    .program-button {
-      display: inline-block;
-      background: var(--highlight-gold);
-      color: white;
-      font-weight: bold;
-      text-decoration: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      transition: background 0.2s ease;
-    }
-
-    .program-button:hover {
-      background: #d98f00;
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <h1>Energy Incentive Finder</h1>
-    <p>Discover rebates and tax credits for solar, batteries, and energy upgrades in your area</p>
-  </header>
-
-  <main>
-    <div class="form-section">
-      <label for="userType">I am a:</label>
-      <select id="userType">
-        <option value="residential">Homeowner / Renter</option>
-        <option value="commercial">Business / Commercial</option>
-        <option value="nonprofit">Nonprofit / Public Org</option>
-      </select>
-
-      <label for="stateSelect">Select your state:</label>
-      <select id="stateSelect">
-        <option value="">-- Choose a state --</option>
-        <option value="CA">California</option>
-        <option value="IL">Illinois</option>
-        <option value="TX">Texas</option>
-        <option value="NY">New York</option>
-        <!-- Add more states here -->
-      </select>
-
-      <label for="zipCode">ZIP Code (optional):</label>
-      <input type="text" id="zipCode" placeholder="e.g. 94110" />
-
-      <label for="income">Estimated Annual Household Income:</label>
-      <input type="number" id="income" placeholder="e.g. 45000" />
-
-      <button onclick="findPrograms()">Find Programs</button>
-
-      <div id="results"></div>
-    </div>
-
-    <div class="sidebar">
-      <h3>Need Help?</h3>
-      <p>Email your utility provider or visit:</p>
-      <ul>
-        <li><a href="https://www.cpuc.ca.gov/sgip" target="_blank">CPUC SGIP Page</a></li>
-        <li><a href="https://www.energy.gov/save" target="_blank">DOE Energy Saver</a></li>
-        <li><a href="https://illinoissfa.com" target="_blank">Illinois Solar for All</a></li>
-      </ul>
-    </div>
-  </main>
-
-  <script>
-    async function findPrograms() {
-      const userType = document.getElementById('userType').value;
-      const state = document.getElementById('stateSelect').value;
-      const income = parseInt(document.getElementById('income').value || "0");
-      const resultsDiv = document.getElementById('results');
-
-      resultsDiv.innerHTML = "<p>Loading programs...</p>";
-
-      const res = await fetch('incentives.json');
-      const data = await res.json();
-
-      const matches = data.filter(program => {
-        const sectorMatch = program.sectors.includes(userType);
-        const stateMatch = program.states.includes("all") || program.states.includes(state);
-        const incomeMatch = !program.low_income_only || (program.low_income_only && income && income < 60000);
-        return sectorMatch && stateMatch && incomeMatch;
-      });
-
-      if (matches.length === 0) {
-        resultsDiv.innerHTML = "<p>No programs found. Try adjusting your info.</p>";
-        return;
-      }
-
-      resultsDiv.innerHTML = matches.map(p => `
-        <div class="program-card">
-          <h3>${p.name}</h3>
-          <div class="program-tags">
-            ${p.sectors.map(s => `<span class="tag">${s}</span>`).join('')}
-            ${p.low_income_only ? `<span class="tag low-income">Low Income Only</span>` : ''}
-          </div>
-          <p class="program-desc">${p.description}</p>
-          <a class="program-button" href="${p.url}" target="_blank">Learn More</a>
-        </div>
-      `).join('');
-    }
-  </script>
-
-</body>
-</html>
+  <div id="sgipResult" style="margin-top: 1rem;"></div>
+</div>
