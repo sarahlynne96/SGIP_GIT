@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>California SGIP Eligibility & Rebate Estimator (v17)</title>
+  <title>California SGIP Eligibility & Rebate Estimator (v18)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/html2pdf.js/dist/html2pdf.bundle.min.js">
   <style>
     :root{--primary:#fdb813;--secondary:#003c71;--accent:#005eb8;--bg:#f9f9f9;--text:#333;--muted:#666;--card:#fff}
@@ -25,56 +25,60 @@
   <form id="calcForm">
 
     <div class="card">
-      <label for="address">Installation address (optional)</label>
+      <label for="address">Installation Address (optional)</label>
       <input id="address" placeholder="e.g., 1234 Main St, Fresno, CA">
 
-      <label for="utility">Utility provider</label>
+      <label for="utility">Utility Provider</label>
       <select id="utility" required>
         <option value="">Select your utility</option>
         <option>CSE</option><option>SCE</option><option>SCG</option><option>PG&E</option><option>LADWP</option>
       </select>
 
-      <label for="county">County of installation</label>
+      <label for="county">County of Installation</label>
       <select id="county" required></select>
 
-      <label for="hhSize">Number of people in your household</label>
+      <label for="hhSize">Number of People in Your Household</label>
       <input id="hhSize" type="number" min="1" max="8" value="4">
 
-      <label for="hhIncome">Annual household income (optional)</label>
+      <label for="hhIncome">Annual Household Income (optional)</label>
       <input id="hhIncome" type="number" placeholder="e.g., 95000">
     </div>
 
     <div class="card">
-      <label for="custType">Type of customer</label>
-      <select id="custType" required>
-        <option value="">Select customer type</option>
-        <option value="single">Single-Family Home</option>
-        <option value="multi">Multifamily Home</option>
-        <option value="nonres">Business or Non-Residential</option>
-      </select>
-
-      <label for="critFlag">Medical baseline or critical well-pump customer?</label>
+      <label for="critFlag">Medical Baseline or Critical Well-Pump Participant?</label>
+      <small>Indicate if your household is enrolled in your utility’s Medical Baseline allowance program or relies on a critical well-pump. Verify this on your utility bill under special rates or programs.</small>
       <select id="critFlag" required>
         <option value="">Select option</option>
         <option value="yes">Yes</option>
         <option value="no">No</option>
       </select>
 
-      <label for="dacFlag">Located in a Disadvantaged Community or High Fire Threat District?</label>
+      <label for="careFlag">CARE Program Participant?</label>
+      <small>Confirm if your household participates in the CARE program, found on your utility bill under special discounts.</small>
+      <select id="careFlag" required>
+        <option value="">Select option</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="dacFlag">Located in a DAC or High Fire-Threat District?</label>
+      <small>Check using the integrated or CPUC’s online map tools.</small>
       <select id="dacFlag" required>
         <option value="">Select option</option>
         <option value="yes">Yes</option>
         <option value="no">No / Unsure</option>
       </select>
 
-      <label for="pspsFlag">Experienced 2+ PSPS shut-offs?</label>
+      <label for="pspsFlag">Experienced 2 or More PSPS Events?</label>
+      <small>Check your utility’s PSPS outage history online.</small>
       <select id="pspsFlag" required>
         <option value="">Select option</option>
         <option value="yes">Yes</option>
         <option value="no">No / Unsure</option>
       </select>
 
-      <label for="sjvFlag">San Joaquin Valley pilot city?</label>
+      <label for="sjvFlag">Located in a San Joaquin Valley Pilot City?</label>
+      <small>Refer to the provided map or city list.</small>
       <select id="sjvFlag" required>
         <option value="">Select option</option>
         <option value="yes">Yes</option>
@@ -83,25 +87,16 @@
     </div>
 
     <div class="card">
-      <label for="storageKWh">Battery storage capacity (kWh)</label>
-      <input id="storageKWh" type="number" min="0" step="0.1" required>
+      <label for="storageKWh">Battery Capacity (kWh)</label>
+      <small>Check battery specifications or your installation proposal. (Default: 30.6 kWh)</small>
+      <input id="storageKWh" type="number" min="0" step="0.1" value="30.6" required>
 
-      <label for="solarKW">Solar system size (kW, optional)</label>
-      <input id="solarKW" type="number" min="0" step="0.1">
+      <label for="solarKW">Solar Array Size (kW, optional)</label>
+      <small>Check your solar system proposal or specification documents. (Default: 8 kW)</small>
+      <input id="solarKW" type="number" min="0" step="0.1" value="8">
     </div>
 
-    <div class="card">
-      <label for="contactName">Your full name</label>
-      <input id="contactName" required>
-
-      <label for="contactPhone">Your phone number</label>
-      <input id="contactPhone" type="tel" required>
-
-      <label for="contactEmail">Your email address</label>
-      <input id="contactEmail" type="email" required>
-    </div>
-
-    <button type="submit" class="primary-btn">Calculate & Download PDF</button>
+    <button type="submit" class="primary-btn">Calculate & Print PDF</button>
   </form>
 
   <div id="incomeResult" class="incomeResult"></div>
@@ -109,14 +104,10 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.9.2/dist/html2pdf.bundle.min.js"></script>
 <script>
-  // Existing JavaScript logic remains unchanged.
-  // PDF generation logic:
   document.getElementById('calcForm').addEventListener('submit', function(e){
     e.preventDefault();
-    const element = document.querySelector('.wrapper');
-    html2pdf().from(element).save('SGIP_Calculator_Result.pdf');
+    window.print();
   });
 </script>
 </body>
